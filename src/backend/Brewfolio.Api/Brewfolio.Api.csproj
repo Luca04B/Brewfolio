@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Brewfolio.Application\Brewfolio.Application.csproj" />
+    <ProjectReference Include="..\Brewfolio.Infrastructure\Brewfolio.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>Brewfolio.Api-local-development</UserSecretsId>
+  </PropertyGroup>
+
+</Project>
