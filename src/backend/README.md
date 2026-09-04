@@ -25,6 +25,10 @@ Persistence, authentication, and observability packages will be added with the f
 
 ## Native Result experiment
 
-`CoffeeBean.Create` returns the native union `Result<CoffeeBean>`, whose cases are `CoffeeBean` and `Error`. Expected validation failures are returned as structured errors; exceptions remain reserved for unexpected failures and broken invariants. Callers inspect the union through pattern matching or its generated `Value` property.
+Domain factories return the native union `Result<T>`, whose cases are the created Entity and `ValidationFailure`. A failure contains one or more `ValidationError` values with a stable code, a Domain property name, and a client-safe description. Independent validation errors are collected so a caller can present them together.
+
+Failable Domain mutations without a success payload return the non-generic union `Result`, whose cases are `Success` and `ValidationFailure`. Infallible idempotent state changes such as activating or deactivating a Brewing Method remain `void`. Expected validation failures use these unions; exceptions remain reserved for unexpected failures and broken invariants.
+
+Application use cases may define concrete unions containing outcomes such as `NotFound` or `Conflict`. The API owns the later mapping from those outcomes to HTTP status codes and Problem Details; Domain property names are translated to JSON field names at that boundary.
 
 The native `union` syntax is a C# 15 preview feature. The repository therefore requires the exact prerelease SDK pinned in `global.json`; both the language and generated union behavior may change before .NET 11 is released.

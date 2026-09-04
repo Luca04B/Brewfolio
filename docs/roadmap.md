@@ -24,7 +24,7 @@ The roadmap orders learning and delivery so each phase leaves Brewfolio usable. 
 - configure and activate or deactivate Brewing Methods
 - create and list reusable Recipes
 - reference a Brewing Method and capture quantities, temperature, grind size, and target brew time
-- decide whether a Recipe belongs to one Coffee Bean or can be used with several
+- keep Recipes independent of a particular Coffee Bean so they can be reused with several
 
 ## Phase 3 — Coffee Brews
 
@@ -43,16 +43,23 @@ The roadmap orders learning and delivery so each phase leaves Brewfolio usable. 
 
 - introduce Keycloak when Coffee Beans, Recipes, and Coffee Brews need ownership
 - protect Angular routes and API endpoints
-- associate user-owned data with the authenticated user
+- associate Member-owned data with the authenticated Member
 
-## Phase 6 — Continuous integration
+## Phase 6 — Community Recipes
+
+- publish Recipes for other Members to discover and prepare
+- browse Published Recipes in a feed
+- derive Recipe Scores from eligible Coffee Brew ratings
+- rank Published Recipes using rules designed and tested with this vertical slice
+
+## Phase 7 — Continuous integration
 
 - build backend and frontend on relevant pushes
 - run unit, architecture, integration, and frontend tests
 - build container images
 - protect the main branch with passing checks
 
-## Phase 7 — Optional deployment
+## Phase 8 — Optional deployment
 
 - select hosting from explicit requirements such as cost, container support, persistence, security, and observability
 - add a container registry and deployment pipeline

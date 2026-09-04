@@ -4,7 +4,7 @@ This document captures Brewfolio's current domain shape. It is intentionally sma
 
 ## Coffee Bean
 
-A `CoffeeBean` represents one coffee product in the user's current collection.
+A `CoffeeBean` represents one coffee product in a Member's current collection.
 
 Initial information:
 
@@ -18,7 +18,7 @@ Initial information:
 
 `Price` always means euros in the MVP; Brewfolio has no currency field or currency conversion. `IsInStock` is deliberately a Boolean. Brewfolio does not yet track quantities, individual bags, purchases, or stock history.
 
-Creating a Coffee Bean returns `Result<CoffeeBean>`. Valid input produces the Entity; missing required text or a negative price produces a structured validation `Error`. The result is implemented as a native C# 15 preview union so callers must distinguish the expected outcomes explicitly.
+Creating a Coffee Bean returns `Result<CoffeeBean>`. Valid input produces the Entity; invalid input produces a structured `ValidationFailure` containing all independent validation errors. The result is implemented as a native C# 15 preview union so callers must distinguish the expected outcomes explicitly.
 
 A roast date is not part of `CoffeeBean`. If Brewfolio later needs to distinguish repeated purchases of the same coffee, a separate concept such as `CoffeeBag` or `CoffeeStockItem` can own purchase-specific price, roast date, quantity, and availability.
 
@@ -37,11 +37,11 @@ Initial information:
 - `GrindSize`
 - `TargetBrewTime`, represented as a duration rather than a clock time
 
-A Recipe is independent of a Coffee Bean, references one configurable Brewing Method, and can be reused for multiple Coffee Brews.
+A Recipe is independent of a Coffee Bean, references one configurable Brewing Method, and can be reused for multiple Coffee Brews. This allows different Members to follow the same Recipe with their own Coffee Beans.
 
 ## Brewing Method
 
-A `BrewingMethod` represents a configurable preparation method such as V60, AeroPress, or French Press.
+A `BrewingMethod` represents a preparation method such as V60, AeroPress, or French Press from a shared, centrally managed catalog.
 
 Initial information:
 
@@ -49,7 +49,7 @@ Initial information:
 - `Name`
 - `IsActive`
 
-Names must be unique when Brewing Methods are stored. Deactivation prevents selection for new Recipes while preserving existing Recipe references.
+Names must be unique when Brewing Methods are stored. An unused Brewing Method may be deleted. Once referenced by a Recipe, it must be preserved; deactivation prevents selection for new Recipes while keeping existing references, and reactivation makes it selectable again.
 
 ## Coffee Brew
 
@@ -64,7 +64,7 @@ Initial information:
 - `Rating`
 - `Notes`
 
-`BrewedAt` is the date and time of the preparation. `Rating` is optional and ranges from 1 to 5. A future `ActualBrewTime` may record the measured duration separately from the Recipe's `TargetBrewTime`.
+`BrewedAt` is the date and time of the preparation. `Rating` is an optional assessment of that specific preparation and ranges from 1 to 5. A future `ActualBrewTime` may record the measured duration separately from the Recipe's `TargetBrewTime`.
 
 ## Relationships
 
@@ -76,5 +76,9 @@ Recipe ──────────┘
 Brewing Method ──> used by many Recipes
 Recipe ──> reused by many Coffee Brews
 ```
+
+## Future community direction
+
+After authentication and ownership exist, Members will be able to publish Recipes for other Members to prepare. Public Recipe Scores and rankings will be derived from ratings on the resulting Coffee Brews. Publication lifecycle, rating eligibility, weighting, and ranking rules will be designed with that vertical slice rather than added to the current entities in advance.
 
 The first vertical slice creates and lists Coffee Beans. Recipes and Coffee Brews follow after that foundation is persistent and tested.

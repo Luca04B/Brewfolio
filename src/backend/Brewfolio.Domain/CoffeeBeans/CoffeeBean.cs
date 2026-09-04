@@ -48,24 +48,51 @@ public sealed class CoffeeBean
         decimal price,
         bool isInStock = true)
     {
+        List<ValidationError> errors = [];
+
         if (string.IsNullOrWhiteSpace(name))
         {
-            return Error.Validation("coffeeBean.name.required", "Name is required.");
+            errors.Add(new ValidationError(
+                "coffeeBean.name.required",
+                nameof(Name),
+                "Name is required."));
         }
 
         if (string.IsNullOrWhiteSpace(roaster))
         {
-            return Error.Validation("coffeeBean.roaster.required", "Roaster is required.");
+            errors.Add(new ValidationError(
+                "coffeeBean.roaster.required",
+                nameof(Roaster),
+                "Roaster is required."));
         }
 
         if (string.IsNullOrWhiteSpace(origin))
         {
-            return Error.Validation("coffeeBean.origin.required", "Origin is required.");
+            errors.Add(new ValidationError(
+                "coffeeBean.origin.required",
+                nameof(Origin),
+                "Origin is required."));
+        }
+
+        if (!Enum.IsDefined(roastLevel))
+        {
+            errors.Add(new ValidationError(
+                "coffeeBean.roastLevel.invalid",
+                nameof(RoastLevel),
+                "Roast level is invalid."));
         }
 
         if (price < 0)
         {
-            return Error.Validation("coffeeBean.price.negative", "Price cannot be negative.");
+            errors.Add(new ValidationError(
+                "coffeeBean.price.negative",
+                nameof(Price),
+                "Price cannot be negative."));
+        }
+
+        if (errors.Count > 0)
+        {
+            return new ValidationFailure(errors);
         }
 
         return new CoffeeBean(

@@ -1,4 +1,5 @@
 using Brewfolio.Domain.Recipes;
+using Brewfolio.Domain.Results;
 
 namespace Brewfolio.UnitTests.Recipes;
 
@@ -10,7 +11,7 @@ public sealed class RecipeTests
         var targetBrewTime = TimeSpan.FromMinutes(3);
         var brewingMethodId = Guid.NewGuid();
 
-        var recipe = Recipe.Create(
+        var result = Recipe.Create(
             "V60 Standard",
             brewingMethodId,
             15m,
@@ -18,6 +19,7 @@ public sealed class RecipeTests
             94m,
             GrindSize.MediumFine,
             targetBrewTime);
+        var recipe = GetCreatedRecipe(result);
 
         Assert.Equal(brewingMethodId, recipe.BrewingMethodId);
         Assert.Equal(targetBrewTime, recipe.TargetBrewTime);
@@ -26,27 +28,91 @@ public sealed class RecipeTests
     [Fact]
     public void CreateRejectsANonPositiveTargetBrewTime()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => Recipe.Create(
+        var result = Recipe.Create(
             "V60 Standard",
             Guid.NewGuid(),
             15m,
             250m,
             94m,
             GrindSize.MediumFine,
-            TimeSpan.Zero));
+            TimeSpan.Zero);
+        var error = Assert.Single(GetValidationFailure(result).Errors);
+
+        Assert.Equal("recipe.targetBrewTime.notPositive", error.Code);
     }
 
     [Fact]
     public void CreateRejectsAnEmptyBrewingMethodId()
     {
-        Assert.Throws<ArgumentException>(() => Recipe.Create(
+        var result = Recipe.Create(
             "V60 Standard",
             Guid.Empty,
             15m,
             250m,
             94m,
             GrindSize.MediumFine,
-            TimeSpan.FromMinutes(3)));
+            TimeSpan.FromMinutes(3));
+        var error = Assert.Single(GetValidationFailure(result).Errors);
+
+        Assert.Equal("recipe.brewingMethodId.required", error.Code);
+    }
+
+    [Fact]
+    public void CreateReturnsAllIndependentValidationErrors()
+    {
+        Result<Recipe> result = Recipe.Create(
+            " ",
+            Guid.Empty,
+            0m,
+            0m,
+            101m,
+            (GrindSize)99,
+            TimeSpan.Zero);
+        var failure = GetValidationFailure(result);
+
+        Assert.Collection(
+            failure.Errors,
+            error => Assert.Equal("recipe.name.required", error.Code),
+            error => Assert.Equal("recipe.brewingMethodId.required", error.Code),
+            error => Assert.Equal("recipe.coffeeAmountInGrams.notPositive", error.Code),
+            error => Assert.Equal("recipe.waterAmountInGrams.notPositive", error.Code),
+            error => Assert.Equal("recipe.waterTemperatureInCelsius.outOfRange", error.Code),
+            error => Assert.Equal("recipe.grindSize.invalid", error.Code),
+            error => Assert.Equal("recipe.targetBrewTime.notPositive", error.Code));
+    }
+
+    [Fact]
+    public void CreateAcceptsAnExplicitlyUnknownGrindSize()
+    {
+        var result = Recipe.Create(
+            "V60 Standard",
+            Guid.NewGuid(),
+            15m,
+            250m,
+            94m,
+            GrindSize.Unknown,
+            TimeSpan.FromMinutes(3));
+        var recipe = GetCreatedRecipe(result);
+
+        Assert.Equal(GrindSize.Unknown, recipe.GrindSize);
+    }
+
+    private static ValidationFailure GetValidationFailure(Result<Recipe> result)
+    {
+        return result switch
+        {
+            Recipe => throw new InvalidOperationException("Expected a validation error."),
+            ValidationFailure failure => failure
+        };
+    }
+
+    private static Recipe GetCreatedRecipe(Result<Recipe> result)
+    {
+        return result switch
+        {
+            Recipe recipe => recipe,
+            ValidationFailure failure => throw new InvalidOperationException(
+                $"Expected a Recipe, but got {failure.Errors.Count} validation error(s).")
+        };
     }
 }
-

@@ -30,11 +30,46 @@ public sealed class CoffeeBeanTests
             "Ethiopia",
             RoastLevel.Light,
             -1m);
-        var error = GetValidationError(result);
+        var failure = GetValidationFailure(result);
+        var error = Assert.Single(failure.Errors);
 
-        Assert.Equal(ErrorType.Validation, error.Type);
         Assert.Equal("coffeeBean.price.negative", error.Code);
+        Assert.Equal(nameof(CoffeeBean.Price), error.Field);
         Assert.Equal("Price cannot be negative.", error.Description);
+    }
+
+    [Fact]
+    public void CreateReturnsAllIndependentValidationErrors()
+    {
+        var result = CoffeeBean.Create(
+            " ",
+            " ",
+            " ",
+            (RoastLevel)99,
+            -1m);
+        var failure = GetValidationFailure(result);
+
+        Assert.Collection(
+            failure.Errors,
+            error => Assert.Equal("coffeeBean.name.required", error.Code),
+            error => Assert.Equal("coffeeBean.roaster.required", error.Code),
+            error => Assert.Equal("coffeeBean.origin.required", error.Code),
+            error => Assert.Equal("coffeeBean.roastLevel.invalid", error.Code),
+            error => Assert.Equal("coffeeBean.price.negative", error.Code));
+    }
+
+    [Fact]
+    public void CreateAcceptsAnExplicitlyUnknownRoastLevel()
+    {
+        var result = CoffeeBean.Create(
+            "Ethiopia Bombe",
+            "Example Roasters",
+            "Ethiopia",
+            RoastLevel.Unknown,
+            18.90m);
+        var coffeeBean = GetCreatedCoffeeBean(result);
+
+        Assert.Equal(RoastLevel.Unknown, coffeeBean.RoastLevel);
     }
 
     [Fact]
@@ -60,16 +95,17 @@ public sealed class CoffeeBeanTests
         return result switch
         {
             CoffeeBean coffeeBean => coffeeBean,
-            Error error => throw new InvalidOperationException($"Expected a Coffee Bean, but got {error.Code}.")
+            ValidationFailure failure => throw new InvalidOperationException(
+                $"Expected a Coffee Bean, but got {failure.Errors.Count} validation error(s).")
         };
     }
 
-    private static Error GetValidationError(Result<CoffeeBean> result)
+    private static ValidationFailure GetValidationFailure(Result<CoffeeBean> result)
     {
         return result switch
         {
             CoffeeBean => throw new InvalidOperationException("Expected a validation error."),
-            Error error => error
+            ValidationFailure failure => failure
         };
     }
 }
