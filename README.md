@@ -13,7 +13,7 @@ The repository foundation is ready:
 - backend unit and architecture test projects
 - local container setup for the API, frontend, and SQL Server
 - architecture, roadmap, domain language, and decision records
-- agent guidance for Codex, Claude Code, and repository-local skills
+- agent guidance for Codex and repository-local skills
 
 Business features and database integration will be added as vertical slices. The current API exposes `/api` and `/health` so the setup can be verified immediately.
 
@@ -23,7 +23,6 @@ Business features and database integration will be added as vertical slices. The
 Brewfolio/
 ├── Brewfolio.sln
 ├── AGENTS.md
-├── CLAUDE.md
 ├── CONTEXT.md
 ├── compose.yaml
 ├── docs/
@@ -79,7 +78,7 @@ The containerized frontend is then available at <http://localhost:4200> and prox
 
 ## Preview experiment
 
-The backend intentionally targets .NET 11 Preview 7 and enables the C# preview language version. `CoffeeBean.Create` uses a native C# 15 union-based `Result<T>` to represent either a created Coffee Bean or an expected validation error. This keeps the experiment small while exercising implicit union conversions and exhaustive pattern matching without a third-party result library.
+The backend intentionally targets .NET 11 Preview 7 and enables the C# preview language version. Domain factories use the native C# 15 union-based `Result<T>` to represent either a created Entity or a structured `ValidationFailure`. Mutations that can fail without returning a value use `Result`, whose success case is `Success`. This exercises implicit union conversions and exhaustive pattern matching without a third-party result library.
 
 .NET 11 and native C# unions are prerelease technology and are not supported for production use yet. The exact SDK is pinned in `global.json`; install that SDK before running native backend commands. The container workflow pins the corresponding Preview 7 SDK and runtime images.
 
@@ -96,4 +95,4 @@ The backend intentionally targets .NET 11 Preview 7 and enables the C# preview l
 
 ## Working with coding agents
 
-Repository-aware agents start with [AGENTS.md](AGENTS.md). It points them to the smallest relevant source of truth for each task. [CLAUDE.md](CLAUDE.md) provides the same entry point for Claude Code. Repository-specific skills can be added later without copying architecture or domain knowledge into every skill.
+Repository-aware Codex agents start with [AGENTS.md](AGENTS.md). It points them to the smallest relevant source of truth for each task. Repository-specific skills live under `.agents/skills` without copying architecture or domain knowledge into every skill.

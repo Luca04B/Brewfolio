@@ -1,3 +1,5 @@
+using Brewfolio.Domain.Results;
+
 namespace Brewfolio.Domain.CoffeeBrews;
 
 public sealed class CoffeeBrew
@@ -34,24 +36,40 @@ public sealed class CoffeeBrew
 
     public string? Notes { get; private set; }
 
-    public static CoffeeBrew Create(
+    public static Result<CoffeeBrew> Create(
         Guid coffeeBeanId,
         Guid recipeId,
         DateTimeOffset brewedAt,
         int? rating = null,
         string? notes = null)
     {
+        List<ValidationError> errors = [];
+
         if (coffeeBeanId == Guid.Empty)
         {
-            throw new ArgumentException("Coffee Bean id is required.", nameof(coffeeBeanId));
+            errors.Add(new ValidationError(
+                "coffeeBrew.coffeeBeanId.required",
+                nameof(CoffeeBeanId),
+                "Coffee Bean id is required."));
         }
 
         if (recipeId == Guid.Empty)
         {
-            throw new ArgumentException("Recipe id is required.", nameof(recipeId));
+            errors.Add(new ValidationError(
+                "coffeeBrew.recipeId.required",
+                nameof(RecipeId),
+                "Recipe id is required."));
         }
 
-        EnsureValidRating(rating);
+        if (!IsValidRating(rating))
+        {
+            errors.Add(InvalidRating());
+        }
+
+        if (errors.Count > 0)
+        {
+            return new ValidationFailure(errors);
+        }
 
         return new CoffeeBrew(
             Guid.NewGuid(),
@@ -62,10 +80,15 @@ public sealed class CoffeeBrew
             notes);
     }
 
-    public void UpdateRating(int? rating)
+    public Result UpdateRating(int? rating)
     {
-        EnsureValidRating(rating);
+        if (!IsValidRating(rating))
+        {
+            return new ValidationFailure([InvalidRating()]);
+        }
+
         Rating = rating;
+        return new Success();
     }
 
     public void UpdateNotes(string? notes)
@@ -73,12 +96,17 @@ public sealed class CoffeeBrew
         Notes = NormalizeNotes(notes);
     }
 
-    private static void EnsureValidRating(int? rating)
+    private static bool IsValidRating(int? rating)
     {
-        if (rating is < 1 or > 5)
-        {
-            throw new ArgumentOutOfRangeException(nameof(rating), "Rating must be between 1 and 5.");
-        }
+        return rating is null or >= 1 and <= 5;
+    }
+
+    private static ValidationError InvalidRating()
+    {
+        return new ValidationError(
+            "coffeeBrew.rating.outOfRange",
+            nameof(Rating),
+            "Rating must be between 1 and 5.");
     }
 
     private static string? NormalizeNotes(string? notes)
@@ -86,4 +114,3 @@ public sealed class CoffeeBrew
         return string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
     }
 }
-

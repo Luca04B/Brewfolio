@@ -13,6 +13,20 @@ Brewfolio is a local-first monorepo containing an ASP.NET Core backend and an An
 - Read `docs/roadmap.md` when prioritizing or scoping features.
 - Read the relevant file in `docs/adr/` before revisiting a recorded decision.
 
+## Agent skills
+
+### Issue tracker
+
+Issues and specs are tracked in GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage uses the five canonical Matt Pocock skill labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Brewfolio uses a single-context domain layout. See `docs/agents/domain.md`.
+
 ## Working agreements
 
 - Keep the system runnable locally and keep cloud-provider concerns outside the application core.

@@ -24,7 +24,11 @@ Represent state-changing use cases as Commands and read-only use cases as Querie
 
 Return a Result for expected business failures such as invalid input, duplicates, or missing records. Reserve exceptions for unexpected failures and broken invariants.
 
-The current learning implementation uses the native C# 15 preview declaration `Result<T>(T, Error)`. Keep errors structured with a stable code, a client-safe description, and a category that can later be mapped to HTTP. This preview experiment currently has one real caller, `CoffeeBean.Create`; expand it only as additional vertical slices need the same interface.
+The Domain uses the native C# 15 preview declarations `Result<T>(T, ValidationFailure)` and `Result(Success, ValidationFailure)`. Factories use the generic form to return a new Entity. A failable mutation uses the non-generic form when success has no additional payload. Infallible state changes remain `void`.
+
+`ValidationFailure` contains at least one `ValidationError`. Each error has a stable machine-readable code, a Domain property name, and a client-safe description. Collect independent errors and return them together. An empty failure or the invalid default state of a generated union is a programming error, not an expected outcome.
+
+Keep `NotFound`, `Conflict`, and other orchestration outcomes out of the shared Domain result. Define a concrete native union for an Application use case when it has distinct expected outcomes. The API maps those outcomes to HTTP and translates Domain property names to request-contract field names.
 
 ### Repository Adapter
 

@@ -1,3 +1,5 @@
+using Brewfolio.Domain.Results;
+
 namespace Brewfolio.Domain.Recipes;
 
 public sealed class Recipe
@@ -42,7 +44,7 @@ public sealed class Recipe
 
     public TimeSpan TargetBrewTime { get; private set; }
 
-    public static Recipe Create(
+    public static Result<Recipe> Create(
         string name,
         Guid brewingMethodId,
         decimal coffeeAmountInGrams,
@@ -51,28 +53,67 @@ public sealed class Recipe
         GrindSize grindSize,
         TimeSpan targetBrewTime)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        List<ValidationError> errors = [];
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            errors.Add(new ValidationError(
+                "recipe.name.required",
+                nameof(Name),
+                "Name is required."));
+        }
 
         if (brewingMethodId == Guid.Empty)
         {
-            throw new ArgumentException("Brewing Method id is required.", nameof(brewingMethodId));
+            errors.Add(new ValidationError(
+                "recipe.brewingMethodId.required",
+                nameof(BrewingMethodId),
+                "Brewing Method id is required."));
         }
 
-        EnsurePositive(coffeeAmountInGrams, nameof(coffeeAmountInGrams));
-        EnsurePositive(waterAmountInGrams, nameof(waterAmountInGrams));
+        if (coffeeAmountInGrams <= 0)
+        {
+            errors.Add(new ValidationError(
+                "recipe.coffeeAmountInGrams.notPositive",
+                nameof(CoffeeAmountInGrams),
+                "Coffee amount must be greater than zero."));
+        }
+
+        if (waterAmountInGrams <= 0)
+        {
+            errors.Add(new ValidationError(
+                "recipe.waterAmountInGrams.notPositive",
+                nameof(WaterAmountInGrams),
+                "Water amount must be greater than zero."));
+        }
 
         if (waterTemperatureInCelsius is <= 0 or > 100)
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(waterTemperatureInCelsius),
-                "Water temperature must be greater than 0 and at most 100 degrees Celsius.");
+            errors.Add(new ValidationError(
+                "recipe.waterTemperatureInCelsius.outOfRange",
+                nameof(WaterTemperatureInCelsius),
+                "Water temperature must be greater than 0 and at most 100 degrees Celsius."));
+        }
+
+        if (!Enum.IsDefined(grindSize))
+        {
+            errors.Add(new ValidationError(
+                "recipe.grindSize.invalid",
+                nameof(GrindSize),
+                "Grind size is invalid."));
         }
 
         if (targetBrewTime <= TimeSpan.Zero)
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(targetBrewTime),
-                "Target brew time must be greater than zero.");
+            errors.Add(new ValidationError(
+                "recipe.targetBrewTime.notPositive",
+                nameof(TargetBrewTime),
+                "Target brew time must be greater than zero."));
+        }
+
+        if (errors.Count > 0)
+        {
+            return new ValidationFailure(errors);
         }
 
         return new Recipe(
@@ -84,13 +125,5 @@ public sealed class Recipe
             waterTemperatureInCelsius,
             grindSize,
             targetBrewTime);
-    }
-
-    private static void EnsurePositive(decimal value, string parameterName)
-    {
-        if (value <= 0)
-        {
-            throw new ArgumentOutOfRangeException(parameterName, "Value must be greater than zero.");
-        }
     }
 }

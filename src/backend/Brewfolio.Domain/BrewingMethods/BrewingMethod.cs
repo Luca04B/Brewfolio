@@ -1,3 +1,5 @@
+using Brewfolio.Domain.Results;
+
 namespace Brewfolio.Domain.BrewingMethods;
 
 public sealed class BrewingMethod
@@ -19,17 +21,35 @@ public sealed class BrewingMethod
 
     public bool IsActive { get; private set; }
 
-    public static BrewingMethod Create(string name)
+    public static Result<BrewingMethod> Create(string name)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return new ValidationFailure([
+                new ValidationError(
+                    "brewingMethod.name.required",
+                    nameof(Name),
+                    "Name is required.")
+            ]);
+        }
 
         return new BrewingMethod(Guid.NewGuid(), name.Trim(), true);
     }
 
-    public void Rename(string name)
+    public Result Rename(string name)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return new ValidationFailure([
+                new ValidationError(
+                    "brewingMethod.name.required",
+                    nameof(Name),
+                    "Name is required.")
+            ]);
+        }
+
         Name = name.Trim();
+        return new Success();
     }
 
     public void Activate()
@@ -42,4 +62,3 @@ public sealed class BrewingMethod
         IsActive = false;
     }
 }
-

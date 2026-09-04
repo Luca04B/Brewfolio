@@ -1,18 +1,28 @@
 namespace Brewfolio.Domain.Results;
 
-public enum ErrorType
-{
-    Validation = 1,
-    NotFound = 2,
-    Conflict = 3
-}
+public sealed record ValidationError(string Code, string Field, string Description);
 
-public sealed record Error(string Code, string Description, ErrorType Type)
+public sealed record ValidationFailure
 {
-    public static Error Validation(string code, string description)
+    public ValidationFailure(IReadOnlyList<ValidationError> errors)
     {
-        return new Error(code, description, ErrorType.Validation);
+        ArgumentNullException.ThrowIfNull(errors);
+
+        if (errors.Count == 0)
+        {
+            throw new ArgumentException(
+                "A validation failure must contain at least one validation error.",
+                nameof(errors));
+        }
+
+        Errors = Array.AsReadOnly(errors.ToArray());
     }
+
+    public IReadOnlyList<ValidationError> Errors { get; }
 }
 
-public union Result<T>(T, Error);
+public readonly record struct Success;
+
+public union Result(Success, ValidationFailure);
+
+public union Result<T>(T, ValidationFailure);
