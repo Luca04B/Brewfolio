@@ -1,11 +1,11 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Brewfolio.Application.CoffeeBeans;
 using Brewfolio.Domain.CoffeeBags;
 using Brewfolio.Domain.CoffeeBeans;
 using Brewfolio.Domain.Results;
 using Brewfolio.Infrastructure;
 using Brewfolio.Infrastructure.Images;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -78,13 +78,13 @@ coffeeBeans.MapPost("/", async (
     CancellationToken cancellationToken) =>
 {
     var parsedRequest = await ParseCreateRequestAsync(httpRequest, cancellationToken);
-    if (parsedRequest is Error parseError)
+    if (parsedRequest is CoffeeBeanRequestError parseError)
     {
         return Results.Problem(
             statusCode: StatusCodes.Status400BadRequest,
             title: "Coffee Bean request is invalid",
             detail: parseError.Description,
-            extensions: new Dictionary<string, object?> { ["code"] = parseError.Code });
+            extensions: new Dictionary<string, object?> { ["code"] = ErrorContract.Code(parseError.Code) });
     }
 
     if (parsedRequest is not ValueTuple<CreateCoffeeBeanRequest, CoffeeBeanImageInput?> parsed)
@@ -109,13 +109,13 @@ coffeeBeans.MapPost("/", async (
     return result switch
     {
         CoffeeBeanDto coffeeBean => Results.Created($"/api/coffee-beans/{coffeeBean.Id}", coffeeBean),
-        Error error => Results.Problem(
-            statusCode: error.Type == ErrorType.Conflict
+        CoffeeBeanError error => Results.Problem(
+            statusCode: error.Type == CoffeeBeanErrorType.Conflict
                 ? StatusCodes.Status409Conflict
                 : StatusCodes.Status400BadRequest,
             title: "Coffee Bean validation failed",
             detail: error.Description,
-            extensions: new Dictionary<string, object?> { ["code"] = error.Code }),
+            extensions: new Dictionary<string, object?> { ["code"] = ErrorContract.Code(error.Code) }),
         ValidationFailure failure => ToValidationProblem(failure)
     };
 }).DisableAntiforgery();
@@ -136,7 +136,10 @@ coffeeBeans.MapGet("/", async (
             statusCode: StatusCodes.Status400BadRequest,
             title: "Invalid collection limit",
             detail: "Limit must be between 1 and 100.",
-            extensions: new Dictionary<string, object?> { ["code"] = "coffeeBean.query.limit" });
+            extensions: new Dictionary<string, object?>
+            {
+                ["code"] = ErrorContract.Code(CoffeeBeanRequestErrorCode.QueryLimitInvalid)
+            });
     }
 
     var result = await handler.HandleAsync(
@@ -160,11 +163,11 @@ coffeeBeans.MapGet("/{id:guid}", async (
     return result switch
     {
         CoffeeBeanDto coffeeBean => Results.Ok(coffeeBean),
-        Error error => Results.Problem(
+        CoffeeBeanError error => Results.Problem(
             statusCode: StatusCodes.Status404NotFound,
             title: "Coffee Bean not found",
             detail: error.Description,
-            extensions: new Dictionary<string, object?> { ["code"] = error.Code }),
+            extensions: new Dictionary<string, object?> { ["code"] = ErrorContract.Code(error.Code) }),
         ValidationFailure failure => ToValidationProblem(failure)
     };
 });
@@ -223,11 +226,11 @@ coffeeBeans.MapDelete("/{id:guid}", async (
     {
         true => Results.NoContent(),
         false => Results.Problem(statusCode: StatusCodes.Status500InternalServerError),
-        Error error => Results.Problem(
+        CoffeeBeanError error => Results.Problem(
             statusCode: StatusCodes.Status404NotFound,
             title: "Coffee Bean not found",
             detail: error.Description,
-            extensions: new Dictionary<string, object?> { ["code"] = error.Code }),
+            extensions: new Dictionary<string, object?> { ["code"] = ErrorContract.Code(error.Code) }),
         ValidationFailure failure => ToValidationProblem(failure)
     };
 });
@@ -323,7 +326,7 @@ coffeeBeans.MapDelete("/{coffeeBeanId:guid}/bags/{coffeeBagId:guid}", async (
 
 app.Run();
 
-static async Task<Result<(CreateCoffeeBeanRequest Request, CoffeeBeanImageInput? Image)>>
+static async Task<CreateCoffeeBeanRequestParseResult>
     ParseCreateRequestAsync(HttpRequest request, CancellationToken cancellationToken)
 {
     try
@@ -332,7 +335,9 @@ static async Task<Result<(CreateCoffeeBeanRequest Request, CoffeeBeanImageInput?
         {
             var jsonRequest = await request.ReadFromJsonAsync<CreateCoffeeBeanRequest>(cancellationToken);
             return jsonRequest is null
-                ? Error.Validation("coffeeBean.request.required", "Request body is required.")
+                ? new CoffeeBeanRequestError(
+                    CoffeeBeanRequestErrorCode.RequestRequired,
+                    "Request body is required.")
                 : (jsonRequest, null);
         }
 
@@ -343,7 +348,9 @@ static async Task<Result<(CreateCoffeeBeanRequest Request, CoffeeBeanImageInput?
         var formRequest = JsonSerializer.Deserialize<CreateCoffeeBeanRequest>(json, options);
         if (formRequest is null)
         {
-            return Error.Validation("coffeeBean.request.required", "Form field 'data' is required.");
+            return new CoffeeBeanRequestError(
+                CoffeeBeanRequestErrorCode.RequestRequired,
+                "Form field 'data' is required.");
         }
 
         var file = form.Files.GetFile("image");
@@ -354,7 +361,9 @@ static async Task<Result<(CreateCoffeeBeanRequest Request, CoffeeBeanImageInput?
 
         if (file.Length > 5 * 1024 * 1024)
         {
-            return Error.Validation("coffeeBean.image.size", "Image must not exceed 5 MB.");
+            return new CoffeeBeanRequestError(
+                CoffeeBeanRequestErrorCode.ImageTooLarge,
+                "Image must not exceed 5 MB.");
         }
 
         using var stream = new MemoryStream();
@@ -363,25 +372,27 @@ static async Task<Result<(CreateCoffeeBeanRequest Request, CoffeeBeanImageInput?
     }
     catch (JsonException)
     {
-        return Error.Validation("coffeeBean.request.invalid", "Request JSON is invalid.");
+        return new CoffeeBeanRequestError(
+            CoffeeBeanRequestErrorCode.RequestInvalid,
+            "Request JSON is invalid.");
     }
 }
 
-static IResult ToHttpResult(Result<CoffeeBeanDto> result)
+static IResult ToHttpResult(CoffeeBeanResult<CoffeeBeanDto> result)
 {
     return result switch
     {
         CoffeeBeanDto coffeeBean => Results.Ok(coffeeBean),
-        Error error => Results.Problem(
+        CoffeeBeanError error => Results.Problem(
             statusCode: error.Type switch
             {
-                ErrorType.NotFound => StatusCodes.Status404NotFound,
-                ErrorType.Conflict => StatusCodes.Status409Conflict,
+                CoffeeBeanErrorType.NotFound => StatusCodes.Status404NotFound,
+                CoffeeBeanErrorType.Conflict => StatusCodes.Status409Conflict,
                 _ => StatusCodes.Status400BadRequest
             },
             title: "Coffee Bean operation failed",
             detail: error.Description,
-            extensions: new Dictionary<string, object?> { ["code"] = error.Code }),
+            extensions: new Dictionary<string, object?> { ["code"] = ErrorContract.Code(error.Code) }),
         ValidationFailure failure => ToValidationProblem(failure)
     };
 }
@@ -389,14 +400,20 @@ static IResult ToHttpResult(Result<CoffeeBeanDto> result)
 static IResult ToValidationProblem(ValidationFailure failure)
 {
     var firstError = failure.Errors[0];
+    var errors = failure.Errors.Select(error => new
+    {
+        code = ErrorContract.Code(error.Code),
+        field = ErrorContract.Field(error.Field),
+        description = error.Description
+    });
     return Results.Problem(
         statusCode: StatusCodes.Status400BadRequest,
         title: "Validation failed",
         detail: firstError.Description,
         extensions: new Dictionary<string, object?>
         {
-            ["code"] = firstError.Code,
-            ["errors"] = failure.Errors
+            ["code"] = ErrorContract.Code(firstError.Code),
+            ["errors"] = errors
         });
 }
 

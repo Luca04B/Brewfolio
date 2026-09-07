@@ -14,20 +14,23 @@ public sealed record UpdateCoffeeBeanCommand(
 
 public sealed class UpdateCoffeeBeanHandler(ICoffeeBeanRepository repository, TimeProvider timeProvider)
 {
-    public async Task<Result<CoffeeBeanDto>> HandleAsync(
+    public async Task<CoffeeBeanResult<CoffeeBeanDto>> HandleAsync(
         CoffeeBeanId id,
         UpdateCoffeeBeanCommand command,
         CancellationToken cancellationToken)
     {
         var bean = await repository.GetAsync(id, cancellationToken);
-        if (bean is null) return Error.NotFound("coffeeBean.notFound", "Coffee Bean was not found.");
+        if (bean is null)
+        {
+            return new CoffeeBeanError(CoffeeBeanErrorCode.CoffeeBeanNotFound);
+        }
 
         var nameResult = CoffeeBeanName.Parse(command.Name);
-        if (nameResult is Error nameError) return nameError;
+        if (nameResult is ValidationFailure nameFailure) return nameFailure;
         if (nameResult is not CoffeeBeanName name) throw new InvalidOperationException();
 
         var roasterResult = RoasterName.Parse(command.Roaster);
-        if (roasterResult is Error roasterError) return roasterError;
+        if (roasterResult is ValidationFailure roasterFailure) return roasterFailure;
         if (roasterResult is not RoasterName roaster) throw new InvalidOperationException();
 
         if (!command.AllowDuplicate)
@@ -35,15 +38,13 @@ public sealed class UpdateCoffeeBeanHandler(ICoffeeBeanRepository repository, Ti
             var duplicate = await repository.FindExactAsync(name, roaster, id, cancellationToken);
             if (duplicate is not null)
             {
-                return Error.Conflict(
-                    "coffeeBean.duplicate.possible",
-                    $"A Coffee Bean with this name and roaster already exists: {duplicate.Name} / {duplicate.Roaster} ({duplicate.Id}).");
+                return new CoffeeBeanError(CoffeeBeanErrorCode.DuplicatePossible);
             }
         }
         var result = bean.UpdateProfile(
             name, roaster, command.Origin, command.RoastLevel,
             command.Description, command.ProductUrl, timeProvider.GetUtcNow());
-        if (result is Error error) return error;
+        if (result is ValidationFailure failure) return failure;
         await repository.SaveChangesAsync(cancellationToken);
         return CoffeeBeanDto.From(bean, DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime));
     }
@@ -53,24 +54,28 @@ public sealed class DuplicateCoffeeBeanHandler(
     ICoffeeBeanRepository repository,
     TimeProvider timeProvider)
 {
-    public async Task<Result<CoffeeBeanDto>> HandleAsync(
+    public async Task<CoffeeBeanResult<CoffeeBeanDto>> HandleAsync(
         CoffeeBeanId id,
         bool acknowledged,
         CancellationToken cancellationToken)
     {
         if (!acknowledged)
         {
-            return Error.Conflict("coffeeBean.duplicate.acknowledgement", "Duplication must be acknowledged.");
+            return new CoffeeBeanError(CoffeeBeanErrorCode.DuplicateAcknowledgementRequired);
         }
         var source = await repository.GetAsync(id, cancellationToken);
-        if (source is null) return Error.NotFound("coffeeBean.notFound", "Coffee Bean was not found.");
+        if (source is null)
+        {
+            return new CoffeeBeanError(CoffeeBeanErrorCode.CoffeeBeanNotFound);
+        }
         var now = timeProvider.GetUtcNow();
         var copyNameResult = CoffeeBeanName.Parse($"{source.Name.Value} (Copy)");
-        if (copyNameResult is Error copyNameError) return copyNameError;
+        if (copyNameResult is ValidationFailure copyNameFailure) return copyNameFailure;
         if (copyNameResult is not CoffeeBeanName copyName) throw new InvalidOperationException();
         var result = CoffeeBean.Create(
             copyName, source.Roaster, source.Origin, source.RoastLevel,
             source.Description, source.ProductUrl, now);
+        if (result is ValidationFailure failure) return failure;
         if (result is not CoffeeBean copy) throw new InvalidOperationException();
         await repository.AddAsync(copy, cancellationToken);
         return CoffeeBeanDto.From(copy, DateOnly.FromDateTime(now.UtcDateTime));
@@ -82,10 +87,13 @@ public sealed class DeleteCoffeeBeanHandler(
     ICoffeeBeanImageStore imageStore,
     IImageCleanupQueue cleanupQueue)
 {
-    public async Task<Result<bool>> HandleAsync(CoffeeBeanId id, CancellationToken cancellationToken)
+    public async Task<CoffeeBeanResult<bool>> HandleAsync(CoffeeBeanId id, CancellationToken cancellationToken)
     {
         var bean = await repository.GetAsync(id, cancellationToken);
-        if (bean is null) return Error.NotFound("coffeeBean.notFound", "Coffee Bean was not found.");
+        if (bean is null)
+        {
+            return new CoffeeBeanError(CoffeeBeanErrorCode.CoffeeBeanNotFound);
+        }
         var imageKey = bean.ImageKey;
         await repository.DeleteAsync(bean, cancellationToken);
         if (imageKey is not null)
@@ -103,15 +111,19 @@ public sealed class ReplaceCoffeeBeanImageHandler(
     IImageCleanupQueue cleanupQueue,
     TimeProvider timeProvider)
 {
-    public async Task<Result<CoffeeBeanDto>> HandleAsync(
+    public async Task<CoffeeBeanResult<CoffeeBeanDto>> HandleAsync(
         CoffeeBeanId id,
         byte[] content,
         CancellationToken cancellationToken)
     {
         var bean = await repository.GetAsync(id, cancellationToken);
-        if (bean is null) return Error.NotFound("coffeeBean.notFound", "Coffee Bean was not found.");
+        if (bean is null)
+        {
+            return new CoffeeBeanError(CoffeeBeanErrorCode.CoffeeBeanNotFound);
+        }
         var stored = await imageStore.StoreAsync(id, content, cancellationToken);
-        if (stored is Error error) return error;
+        if (stored is CoffeeBeanError error) return error;
+        if (stored is ValidationFailure failure) return failure;
         if (stored is not string newKey) throw new InvalidOperationException();
         var oldKey = bean.ImageKey;
         bean.SetImage(newKey, timeProvider.GetUtcNow());
@@ -137,12 +149,15 @@ public sealed class RemoveCoffeeBeanImageHandler(
     IImageCleanupQueue cleanupQueue,
     TimeProvider timeProvider)
 {
-    public async Task<Result<CoffeeBeanDto>> HandleAsync(
+    public async Task<CoffeeBeanResult<CoffeeBeanDto>> HandleAsync(
         CoffeeBeanId id,
         CancellationToken cancellationToken)
     {
         var bean = await repository.GetAsync(id, cancellationToken);
-        if (bean is null) return Error.NotFound("coffeeBean.notFound", "Coffee Bean was not found.");
+        if (bean is null)
+        {
+            return new CoffeeBeanError(CoffeeBeanErrorCode.CoffeeBeanNotFound);
+        }
         var oldKey = bean.RemoveImage(timeProvider.GetUtcNow());
         await repository.SaveChangesAsync(cancellationToken);
         if (oldKey is not null)

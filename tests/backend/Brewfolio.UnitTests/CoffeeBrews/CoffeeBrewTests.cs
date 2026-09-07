@@ -40,7 +40,7 @@ public sealed class CoffeeBrewTests
             rating);
         var error = Assert.Single(GetValidationFailure(result).Errors);
 
-        Assert.Equal("coffeeBrew.rating.outOfRange", error.Code);
+        Assert.Equal(ValidationErrorCode.CoffeeBrewRatingOutOfRange, error.Code);
     }
 
     [Fact]
@@ -55,9 +55,9 @@ public sealed class CoffeeBrewTests
 
         Assert.Collection(
             failure.Errors,
-            error => Assert.Equal("coffeeBrew.coffeeBeanId.required", error.Code),
-            error => Assert.Equal("coffeeBrew.recipeId.required", error.Code),
-            error => Assert.Equal("coffeeBrew.rating.outOfRange", error.Code));
+            error => Assert.Equal(ValidationErrorCode.CoffeeBrewCoffeeBeanRequired, error.Code),
+            error => Assert.Equal(ValidationErrorCode.CoffeeBrewRecipeRequired, error.Code),
+            error => Assert.Equal(ValidationErrorCode.CoffeeBrewRatingOutOfRange, error.Code));
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public sealed class CoffeeBrewTests
         var failure = GetValidationFailure(updateResult);
         var error = Assert.Single(failure.Errors);
 
-        Assert.Equal("coffeeBrew.rating.outOfRange", error.Code);
+        Assert.Equal(ValidationErrorCode.CoffeeBrewRatingOutOfRange, error.Code);
         Assert.Equal(4, coffeeBrew.Rating);
     }
 
@@ -99,9 +99,7 @@ public sealed class CoffeeBrewTests
         return result switch
         {
             CoffeeBrew => throw new InvalidOperationException("Expected a validation error."),
-            ValidationFailure failure => failure,
-            Error error => throw new InvalidOperationException(
-                $"Expected a ValidationFailure, but got {error.Code}.")
+            ValidationFailure failure => failure
         };
     }
 
@@ -111,9 +109,7 @@ public sealed class CoffeeBrewTests
         {
             CoffeeBrew coffeeBrew => coffeeBrew,
             ValidationFailure failure => throw new InvalidOperationException(
-                $"Expected a Coffee Brew, but got {failure.Errors.Count} validation error(s)."),
-            Error error => throw new InvalidOperationException(
-                $"Expected a Coffee Brew, but got {error.Code}.")
+                $"Expected a Coffee Brew, but got {failure.Errors.Count} validation error(s).")
         };
     }
 

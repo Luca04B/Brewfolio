@@ -56,9 +56,6 @@ public sealed class BrewingMethod
     }
 
     private static ValidationFailure InvalidName() => new([
-        new ValidationError(
-            "brewingMethod.name.required",
-            nameof(Name),
-            "Name is required.")
+        new ValidationError(ValidationErrorCode.BrewingMethodNameRequired)
     ]);
 }

@@ -21,17 +21,17 @@ public sealed class CreateCoffeeBeanHandler(
     TimeProvider timeProvider,
     ICoffeeBeanImageStore? imageStore = null)
 {
-    public async Task<Result<CoffeeBeanDto>> HandleAsync(
+    public async Task<CoffeeBeanResult<CoffeeBeanDto>> HandleAsync(
         CreateCoffeeBeanCommand command,
         CancellationToken cancellationToken)
     {
         var now = timeProvider.GetUtcNow();
         var nameResult = CoffeeBeanName.Parse(command.Name);
-        if (nameResult is Error nameError) return nameError;
+        if (nameResult is ValidationFailure nameFailure) return nameFailure;
         if (nameResult is not CoffeeBeanName name) throw new InvalidOperationException();
 
         var roasterResult = RoasterName.Parse(command.Roaster);
-        if (roasterResult is Error roasterError) return roasterError;
+        if (roasterResult is ValidationFailure roasterFailure) return roasterFailure;
         if (roasterResult is not RoasterName roaster) throw new InvalidOperationException();
 
         if (!command.AllowDuplicate)
@@ -43,9 +43,7 @@ public sealed class CreateCoffeeBeanHandler(
                 cancellationToken);
             if (duplicate is not null)
             {
-                return Error.Conflict(
-                    "coffeeBean.duplicate.possible",
-                    $"A Coffee Bean with this name and roaster already exists: {duplicate.Name} / {duplicate.Roaster} ({duplicate.Id}).");
+                return new CoffeeBeanError(CoffeeBeanErrorCode.DuplicatePossible);
             }
         }
 
@@ -57,9 +55,9 @@ public sealed class CreateCoffeeBeanHandler(
             command.Description,
             command.ProductUrl,
             now);
-        if (result is Error error)
+        if (result is ValidationFailure failure)
         {
-            return error;
+            return failure;
         }
 
         if (result is not CoffeeBean coffeeBean)
@@ -79,9 +77,9 @@ public sealed class CreateCoffeeBeanHandler(
                 bag.IsInStock,
                 DateOnly.FromDateTime(now.UtcDateTime),
                 now);
-            if (bagResult is Error bagError)
+            if (bagResult is ValidationFailure bagFailure)
             {
-                return bagError;
+                return bagFailure;
             }
         }
 
@@ -90,14 +88,14 @@ public sealed class CreateCoffeeBeanHandler(
         {
             if (imageStore is null)
             {
-                return Error.Validation("coffeeBean.image.unavailable", "Image storage is unavailable.");
+                return new CoffeeBeanError(CoffeeBeanErrorCode.ImageStorageNotConfigured);
             }
 
             var imageResult = await imageStore.StoreAsync(
                 coffeeBean.Id,
                 command.Image.Content,
                 cancellationToken);
-            if (imageResult is Error imageError)
+            if (imageResult is CoffeeBeanError imageError)
             {
                 return imageError;
             }

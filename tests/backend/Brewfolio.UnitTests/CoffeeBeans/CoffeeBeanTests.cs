@@ -43,17 +43,10 @@ public sealed class CoffeeBeanTests
     }
 
     [Theory]
-    [InlineData("ftp://example.com/coffee", "coffeeBean.productUrl.invalid")]
-    [InlineData("example.com/coffee", "coffeeBean.productUrl.invalid")]
-    [InlineData("https://example.com/" + "x", null)]
-    public void CreateValidatesTheProductUrl(string productUrl, string? expectedCode)
+    [InlineData("ftp://example.com/coffee")]
+    [InlineData("example.com/coffee")]
+    public void CreateRejectsAnInvalidProductUrl(string productUrl)
     {
-        if (expectedCode is null)
-        {
-            productUrl = "https://example.com/" + new string('x', 2_048);
-            expectedCode = "coffeeBean.productUrl.tooLong";
-        }
-
         var result = CoffeeBean.Create(
             ParseName("Ethiopia Bombe"),
             ParseRoaster("Example Roasters"),
@@ -63,7 +56,22 @@ public sealed class CoffeeBeanTests
             productUrl,
             DateTimeOffset.UtcNow);
 
-        Assert.Equal(expectedCode, GetValidationError(result).Code);
+        Assert.Equal(ValidationErrorCode.CoffeeBeanProductUrlInvalid, GetValidationError(result).Code);
+    }
+
+    [Fact]
+    public void CreateRejectsAProductUrlThatIsTooLong()
+    {
+        var result = CoffeeBean.Create(
+            ParseName("Ethiopia Bombe"),
+            ParseRoaster("Example Roasters"),
+            null,
+            RoastLevel.Unknown,
+            null,
+            "https://example.com/" + new string('x', 2_048),
+            DateTimeOffset.UtcNow);
+
+        Assert.Equal(ValidationErrorCode.CoffeeBeanProductUrlTooLong, GetValidationError(result).Code);
     }
 
     [Fact]
@@ -85,33 +93,38 @@ public sealed class CoffeeBeanTests
     }
 
     [Theory]
-    [InlineData("", "Example Roasters", "coffeeBean.name.required")]
-    [InlineData("   ", "Example Roasters", "coffeeBean.name.required")]
-    [InlineData("Ethiopia Bombe", "", "coffeeBean.roaster.required")]
-    [InlineData("Ethiopia Bombe", "   ", "coffeeBean.roaster.required")]
-    public void CreateRejectsMissingProductIdentity(string name, string roaster, string expectedCode)
+    [InlineData("", "Example Roasters", ValidationErrorCode.CoffeeBeanNameRequired)]
+    [InlineData("   ", "Example Roasters", ValidationErrorCode.CoffeeBeanNameRequired)]
+    [InlineData("Ethiopia Bombe", "", ValidationErrorCode.CoffeeBeanRoasterRequired)]
+    [InlineData("Ethiopia Bombe", "   ", ValidationErrorCode.CoffeeBeanRoasterRequired)]
+    public void CreateRejectsMissingProductIdentity(
+        string name,
+        string roaster,
+        ValidationErrorCode expectedCode)
     {
         var value = string.IsNullOrWhiteSpace(name)
             ? CoffeeBeanName.Parse(name).Value
             : RoasterName.Parse(roaster).Value;
-        var error = Assert.IsType<Error>(value);
+        var failure = Assert.IsType<ValidationFailure>(value);
+        var error = Assert.Single(failure.Errors);
 
-        Assert.Equal(ErrorType.Validation, error.Type);
         Assert.Equal(expectedCode, error.Code);
     }
 
     [Theory]
-    [InlineData(true, "coffeeBean.name.tooLong")]
-    [InlineData(false, "coffeeBean.roaster.tooLong")]
-    public void CreateRejectsProductIdentityLongerThan120Characters(bool nameIsTooLong, string expectedCode)
+    [InlineData(true, ValidationErrorCode.CoffeeBeanNameTooLong)]
+    [InlineData(false, ValidationErrorCode.CoffeeBeanRoasterTooLong)]
+    public void CreateRejectsProductIdentityLongerThan120Characters(
+        bool nameIsTooLong,
+        ValidationErrorCode expectedCode)
     {
         var longValue = new string('x', 121);
         var value = nameIsTooLong
             ? CoffeeBeanName.Parse(longValue).Value
             : RoasterName.Parse(longValue).Value;
-        var error = Assert.IsType<Error>(value);
+        var failure = Assert.IsType<ValidationFailure>(value);
+        var error = Assert.Single(failure.Errors);
 
-        Assert.Equal(ErrorType.Validation, error.Type);
         Assert.Equal(expectedCode, error.Code);
     }
 
@@ -121,19 +134,16 @@ public sealed class CoffeeBeanTests
         {
             CoffeeBean coffeeBean => coffeeBean,
             ValidationFailure failure => throw new InvalidOperationException(
-                $"Expected a Coffee Bean, but got {failure.Errors.Count} validation error(s)."),
-            Error error => throw new InvalidOperationException($"Expected a Coffee Bean, but got {error.Code}.")
+                $"Expected a Coffee Bean, but got {failure.Errors.Count} validation error(s).")
         };
     }
 
-    private static Error GetValidationError(Result<CoffeeBean> result)
+    private static ValidationError GetValidationError(Result<CoffeeBean> result)
     {
         return result switch
         {
             CoffeeBean => throw new InvalidOperationException("Expected a validation error."),
-            ValidationFailure failure => throw new InvalidOperationException(
-                $"Expected an Error, but got {failure.Errors.Count} validation error(s)."),
-            Error error => error
+            ValidationFailure failure => Assert.Single(failure.Errors)
         };
     }
 

@@ -12,12 +12,16 @@ public partial class RoasterName
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            return Error.Validation("coffeeBean.roaster.required", "Roaster is required.");
+            return new ValidationFailure([
+                new ValidationError(ValidationErrorCode.CoffeeBeanRoasterRequired)
+            ]);
         }
 
         var normalized = value.Trim();
         return normalized.Length > MaximumLength
-            ? Error.Validation("coffeeBean.roaster.tooLong", "Roaster cannot exceed 120 characters.")
+            ? new ValidationFailure([
+                new ValidationError(ValidationErrorCode.CoffeeBeanRoasterTooLong)
+            ])
             : new RoasterName(normalized);
     }
 }

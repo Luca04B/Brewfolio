@@ -1,5 +1,5 @@
-using Brewfolio.Domain.Results;
 using Brewfolio.Domain.CoffeeBeans;
+using Brewfolio.Domain.Results;
 
 namespace Brewfolio.Domain.CoffeeBags;
 
@@ -78,7 +78,7 @@ public sealed class CoffeeBag
             createdAt.ToUniversalTime());
     }
 
-    internal Result<CoffeeBag> Replace(
+    internal CoffeeBagMutationResult Replace(
         DateOnly purchasedOn,
         DateOnly? roastedOn,
         DateOnly? openedOn,
@@ -110,18 +110,18 @@ public sealed class CoffeeBag
         return this;
     }
 
-    internal Result<CoffeeBag> MarkOpened(DateOnly openedOn, DateOnly today, DateTimeOffset updatedAt)
+    internal CoffeeBagMutationResult MarkOpened(DateOnly openedOn, DateOnly today, DateTimeOffset updatedAt)
     {
         if (openedOn > today)
         {
-            return Error.Validation("coffeeBag.date.future", "Coffee Bag dates cannot be in the future.");
+            return ValidationFailure(
+                ValidationErrorCode.CoffeeBagOpenedDateInFuture);
         }
 
         if (RoastedOn.HasValue && openedOn < RoastedOn)
         {
-            return Error.Validation(
-                "coffeeBag.openedOn.beforeRoastedOn",
-                "Opened date cannot precede the roast date.");
+            return ValidationFailure(
+                ValidationErrorCode.CoffeeBagOpenedBeforeRoasted);
         }
 
         if (OpenedOn != openedOn)
@@ -144,7 +144,7 @@ public sealed class CoffeeBag
         return this;
     }
 
-    private static Error? Validate(
+    private static ValidationFailure? Validate(
         DateOnly purchasedOn,
         DateOnly? roastedOn,
         DateOnly? openedOn,
@@ -154,26 +154,35 @@ public sealed class CoffeeBag
     {
         if (purchasedOn > today || roastedOn > today || openedOn > today)
         {
-            return Error.Validation("coffeeBag.date.future", "Coffee Bag dates cannot be in the future.");
+            var code = purchasedOn > today
+                ? ValidationErrorCode.CoffeeBagPurchasedDateInFuture
+                : roastedOn > today
+                    ? ValidationErrorCode.CoffeeBagRoastedDateInFuture
+                    : ValidationErrorCode.CoffeeBagOpenedDateInFuture;
+            return ValidationFailure(code);
         }
 
         if (openedOn.HasValue && roastedOn.HasValue && openedOn < roastedOn)
         {
-            return Error.Validation(
-                "coffeeBag.openedOn.beforeRoastedOn",
-                "Opened date cannot precede the roast date.");
+            return ValidationFailure(
+                ValidationErrorCode.CoffeeBagOpenedBeforeRoasted);
         }
 
         if (initialWeightGrams <= 0)
         {
-            return Error.Validation("coffeeBag.weight.invalid", "Initial weight must be positive.");
+            return ValidationFailure(
+                ValidationErrorCode.CoffeeBagWeightNotPositive);
         }
 
         if (pricePaid < 0)
         {
-            return Error.Validation("coffeeBag.price.negative", "Price paid cannot be negative.");
+            return ValidationFailure(
+                ValidationErrorCode.CoffeeBagPriceNegative);
         }
 
         return null;
     }
+
+    private static ValidationFailure ValidationFailure(ValidationErrorCode code) =>
+        new([new ValidationError(code)]);
 }

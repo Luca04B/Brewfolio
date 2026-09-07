@@ -37,7 +37,9 @@ public sealed class CoffeeBeanImageLifecycleTests
 
         var result = await handler.HandleAsync(bean.Id, [1, 2, 3], CancellationToken.None);
 
-        Assert.Equal("coffeeBean.image.storageUnavailable", Assert.IsType<Error>(result.Value).Code);
+        Assert.Equal(
+            CoffeeBeanErrorCode.ImageStorageUnavailable,
+            Assert.IsType<CoffeeBeanError>(result.Value).Code);
         Assert.Equal("old-key", bean.ImageKey);
         Assert.Equal(0, repository.SaveCount);
     }
@@ -50,11 +52,12 @@ public sealed class CoffeeBeanImageLifecycleTests
 
     private sealed class FailingImageStore : ICoffeeBeanImageStore
     {
-        public Task<Result<string>> StoreAsync(
+        public Task<CoffeeBeanResult<string>> StoreAsync(
             CoffeeBeanId coffeeBeanId,
             byte[] content,
             CancellationToken cancellationToken) =>
-            Task.FromResult<Result<string>>(Error.Validation("coffeeBean.image.storageUnavailable", "Unavailable"));
+            Task.FromResult<CoffeeBeanResult<string>>(
+                new CoffeeBeanError(CoffeeBeanErrorCode.ImageStorageUnavailable));
         public Task<StoredCoffeeBeanImage?> OpenAsync(string imageKey, bool thumbnail, CancellationToken cancellationToken) =>
             Task.FromResult<StoredCoffeeBeanImage?>(null);
         public Task DeleteAsync(string imageKey, CancellationToken cancellationToken) =>

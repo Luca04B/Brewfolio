@@ -12,12 +12,16 @@ public partial class CoffeeBeanName
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            return Error.Validation("coffeeBean.name.required", "Name is required.");
+            return new ValidationFailure([
+                new ValidationError(ValidationErrorCode.CoffeeBeanNameRequired)
+            ]);
         }
 
         var normalized = value.Trim();
         return normalized.Length > MaximumLength
-            ? Error.Validation("coffeeBean.name.tooLong", "Name cannot exceed 120 characters.")
+            ? new ValidationFailure([
+                new ValidationError(ValidationErrorCode.CoffeeBeanNameTooLong)
+            ])
             : new CoffeeBeanName(normalized);
     }
 }

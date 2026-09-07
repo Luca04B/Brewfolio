@@ -39,7 +39,7 @@ public sealed class RecipeTests
             TimeSpan.Zero);
         var error = Assert.Single(GetValidationFailure(result).Errors);
 
-        Assert.Equal("recipe.targetBrewTime.notPositive", error.Code);
+        Assert.Equal(ValidationErrorCode.RecipeTargetBrewTimeNotPositive, error.Code);
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public sealed class RecipeTests
             TimeSpan.FromMinutes(3));
         var error = Assert.Single(GetValidationFailure(result).Errors);
 
-        Assert.Equal("recipe.brewingMethodId.required", error.Code);
+        Assert.Equal(ValidationErrorCode.RecipeBrewingMethodRequired, error.Code);
     }
 
     [Fact]
@@ -73,13 +73,13 @@ public sealed class RecipeTests
 
         Assert.Collection(
             failure.Errors,
-            error => Assert.Equal("recipe.name.required", error.Code),
-            error => Assert.Equal("recipe.brewingMethodId.required", error.Code),
-            error => Assert.Equal("recipe.coffeeAmountInGrams.notPositive", error.Code),
-            error => Assert.Equal("recipe.waterAmountInGrams.notPositive", error.Code),
-            error => Assert.Equal("recipe.waterTemperatureInCelsius.outOfRange", error.Code),
-            error => Assert.Equal("recipe.grindSize.invalid", error.Code),
-            error => Assert.Equal("recipe.targetBrewTime.notPositive", error.Code));
+            error => Assert.Equal(ValidationErrorCode.RecipeNameRequired, error.Code),
+            error => Assert.Equal(ValidationErrorCode.RecipeBrewingMethodRequired, error.Code),
+            error => Assert.Equal(ValidationErrorCode.RecipeCoffeeAmountNotPositive, error.Code),
+            error => Assert.Equal(ValidationErrorCode.RecipeWaterAmountNotPositive, error.Code),
+            error => Assert.Equal(ValidationErrorCode.RecipeWaterTemperatureOutOfRange, error.Code),
+            error => Assert.Equal(ValidationErrorCode.RecipeGrindSizeInvalid, error.Code),
+            error => Assert.Equal(ValidationErrorCode.RecipeTargetBrewTimeNotPositive, error.Code));
     }
 
     [Fact]
@@ -103,9 +103,7 @@ public sealed class RecipeTests
         return result switch
         {
             Recipe => throw new InvalidOperationException("Expected a validation error."),
-            ValidationFailure failure => failure,
-            Error error => throw new InvalidOperationException(
-                $"Expected a ValidationFailure, but got {error.Code}.")
+            ValidationFailure failure => failure
         };
     }
 
@@ -115,9 +113,7 @@ public sealed class RecipeTests
         {
             Recipe recipe => recipe,
             ValidationFailure failure => throw new InvalidOperationException(
-                $"Expected a Recipe, but got {failure.Errors.Count} validation error(s)."),
-            Error error => throw new InvalidOperationException(
-                $"Expected a Recipe, but got {error.Code}.")
+                $"Expected a Recipe, but got {failure.Errors.Count} validation error(s).")
         };
     }
 }

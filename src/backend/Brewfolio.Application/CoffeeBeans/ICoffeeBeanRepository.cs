@@ -1,6 +1,5 @@
-using Brewfolio.Domain.CoffeeBeans;
 using Brewfolio.Domain.CoffeeBags;
-using Brewfolio.Domain.Results;
+using Brewfolio.Domain.CoffeeBeans;
 
 namespace Brewfolio.Application.CoffeeBeans;
 
@@ -44,7 +43,7 @@ public sealed record StoredCoffeeBeanImage(Stream Content, string ContentType) :
 
 public interface ICoffeeBeanImageStore
 {
-    Task<Result<string>> StoreAsync(
+    Task<CoffeeBeanResult<string>> StoreAsync(
         CoffeeBeanId coffeeBeanId,
         byte[] content,
         CancellationToken cancellationToken);

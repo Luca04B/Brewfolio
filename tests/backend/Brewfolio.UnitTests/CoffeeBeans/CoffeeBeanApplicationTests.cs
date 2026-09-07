@@ -1,6 +1,6 @@
 using Brewfolio.Application.CoffeeBeans;
-using Brewfolio.Domain.CoffeeBeans;
 using Brewfolio.Domain.CoffeeBags;
+using Brewfolio.Domain.CoffeeBeans;
 using Brewfolio.Domain.Results;
 
 namespace Brewfolio.UnitTests.CoffeeBeans;
@@ -54,8 +54,10 @@ public sealed class CoffeeBeanApplicationTests
                 "", "Example Roasters", null, RoastLevel.Unknown, null, null, null),
             CancellationToken.None);
 
-        var error = Assert.IsType<Error>(result.Value);
-        Assert.Equal("coffeeBean.name.required", error.Code);
+        var failure = Assert.IsType<ValidationFailure>(result.Value);
+        Assert.Equal(
+            ValidationErrorCode.CoffeeBeanNameRequired,
+            Assert.Single(failure.Errors).Code);
         Assert.Null(repository.Added);
     }
 
@@ -78,7 +80,9 @@ public sealed class CoffeeBeanApplicationTests
                 new CoffeeBagInput(new DateOnly(2026, 9, 5), null, null, 250, 10m, true)),
             CancellationToken.None);
 
-        Assert.Equal("coffeeBag.date.future", Assert.IsType<Error>(result.Value).Code);
+        Assert.Equal(
+            ValidationErrorCode.CoffeeBagPurchasedDateInFuture,
+            Assert.Single(Assert.IsType<ValidationFailure>(result.Value).Errors).Code);
         Assert.Null(repository.Added);
     }
 
@@ -107,9 +111,9 @@ public sealed class CoffeeBeanApplicationTests
             new CoffeeBeanId(Guid.NewGuid()),
             CancellationToken.None);
 
-        var error = Assert.IsType<Error>(result.Value);
-        Assert.Equal(ErrorType.NotFound, error.Type);
-        Assert.Equal("coffeeBean.notFound", error.Code);
+        var error = Assert.IsType<CoffeeBeanError>(result.Value);
+        Assert.Equal(CoffeeBeanErrorType.NotFound, error.Type);
+        Assert.Equal(CoffeeBeanErrorCode.CoffeeBeanNotFound, error.Code);
     }
 
     [Fact]

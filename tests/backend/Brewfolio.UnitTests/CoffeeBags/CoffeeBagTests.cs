@@ -33,13 +33,13 @@ public sealed class CoffeeBagTests
     }
 
     [Theory]
-    [InlineData(-1, 10, "coffeeBag.weight.invalid")]
-    [InlineData(0, 10, "coffeeBag.weight.invalid")]
-    [InlineData(250, -1, "coffeeBag.price.negative")]
+    [InlineData(-1, 10, ValidationErrorCode.CoffeeBagWeightNotPositive)]
+    [InlineData(0, 10, ValidationErrorCode.CoffeeBagWeightNotPositive)]
+    [InlineData(250, -1, ValidationErrorCode.CoffeeBagPriceNegative)]
     public void CoffeeBagRejectsInvalidQuantityOrPrice(
         int weight,
         decimal price,
-        string expectedCode)
+        ValidationErrorCode expectedCode)
     {
         var result = CreateCoffeeBean().AddBag(
             Today,
@@ -51,7 +51,9 @@ public sealed class CoffeeBagTests
             Today,
             Now);
 
-        Assert.Equal(expectedCode, Assert.IsType<Error>(result.Value).Code);
+        Assert.Equal(
+            expectedCode,
+            Assert.Single(Assert.IsType<ValidationFailure>(result.Value).Errors).Code);
     }
 
     [Fact]
@@ -67,7 +69,9 @@ public sealed class CoffeeBagTests
             Today,
             Now);
 
-        Assert.Equal("coffeeBag.date.future", Assert.IsType<Error>(result.Value).Code);
+        Assert.Equal(
+            ValidationErrorCode.CoffeeBagPurchasedDateInFuture,
+            Assert.Single(Assert.IsType<ValidationFailure>(result.Value).Errors).Code);
     }
 
     [Fact]
@@ -83,7 +87,9 @@ public sealed class CoffeeBagTests
             Today,
             Now);
 
-        Assert.Equal("coffeeBag.openedOn.beforeRoastedOn", Assert.IsType<Error>(result.Value).Code);
+        Assert.Equal(
+            ValidationErrorCode.CoffeeBagOpenedBeforeRoasted,
+            Assert.Single(Assert.IsType<ValidationFailure>(result.Value).Errors).Code);
     }
 
     [Fact]
@@ -120,7 +126,7 @@ public sealed class CoffeeBagTests
 
         var missing = coffeeBean.RemoveBag(new CoffeeBagId(Guid.NewGuid()));
 
-        Assert.Equal("coffeeBag.notFound", Assert.IsType<Error>(missing.Value).Code);
+        Assert.IsType<CoffeeBagNotFound>(missing.Value);
         Assert.Empty(coffeeBean.CoffeeBags);
     }
 

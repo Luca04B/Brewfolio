@@ -1,4 +1,5 @@
 using Amazon.S3;
+using Brewfolio.Application.CoffeeBeans;
 using Brewfolio.Domain.CoffeeBeans;
 using Brewfolio.Infrastructure.Images;
 using DotNet.Testcontainers.Builders;
@@ -57,7 +58,9 @@ public sealed class MinioCoffeeBeanImageStoreTests : IAsyncLifetime
             "not an image"u8.ToArray(),
             CancellationToken.None);
 
-        Assert.Equal("coffeeBean.image.type", Assert.IsType<Brewfolio.Domain.Results.Error>(result.Value).Code);
+        Assert.Equal(
+            CoffeeBeanErrorCode.ImageTypeUnsupported,
+            Assert.IsType<CoffeeBeanError>(result.Value).Code);
     }
 
     public Task InitializeAsync() => _container.StartAsync();

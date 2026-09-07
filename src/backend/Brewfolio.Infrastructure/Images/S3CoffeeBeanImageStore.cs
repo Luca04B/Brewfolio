@@ -2,7 +2,6 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using Brewfolio.Application.CoffeeBeans;
 using Brewfolio.Domain.CoffeeBeans;
-using Brewfolio.Domain.Results;
 using SkiaSharp;
 
 namespace Brewfolio.Infrastructure.Images;
@@ -26,16 +25,14 @@ public sealed class S3CoffeeBeanImageStore(
         }
     }
 
-    public async Task<Result<string>> StoreAsync(
+    public async Task<CoffeeBeanResult<string>> StoreAsync(
         CoffeeBeanId coffeeBeanId,
         byte[] content,
         CancellationToken cancellationToken)
     {
         if (content.Length == 0 || content.Length > MaximumUploadBytes)
         {
-            return Error.Validation(
-                "coffeeBean.image.size",
-                "Image must be between 1 byte and 5 MB.");
+            return new CoffeeBeanError(CoffeeBeanErrorCode.ImageSizeInvalid);
         }
 
         try
@@ -45,15 +42,13 @@ public sealed class S3CoffeeBeanImageStore(
             using var codec = SKCodec.Create(data);
             if (codec is null || !IsAcceptedFormat(codec.EncodedFormat))
             {
-                return Error.Validation(
-                    "coffeeBean.image.type",
-                    "Image must be JPEG, PNG, or WebP.");
+                return new CoffeeBeanError(CoffeeBeanErrorCode.ImageTypeUnsupported);
             }
 
             using var image = SKBitmap.Decode(codec);
             if (image is null)
             {
-                return Error.Validation("coffeeBean.image.invalid", "Image content is invalid.");
+                return new CoffeeBeanError(CoffeeBeanErrorCode.ImageContentInvalid);
             }
 
             var imageKey = $"coffee-beans/{coffeeBeanId.Value:N}/{Guid.NewGuid():N}";
@@ -72,13 +67,11 @@ public sealed class S3CoffeeBeanImageStore(
         }
         catch (ArgumentException)
         {
-            return Error.Validation("coffeeBean.image.invalid", "Image content is invalid.");
+            return new CoffeeBeanError(CoffeeBeanErrorCode.ImageContentInvalid);
         }
         catch (AmazonS3Exception)
         {
-            return Error.Validation(
-                "coffeeBean.image.storageUnavailable",
-                "Image storage is temporarily unavailable.");
+            return new CoffeeBeanError(CoffeeBeanErrorCode.ImageStorageUnavailable);
         }
     }
 

@@ -23,8 +23,8 @@ public sealed class BrewingMethodTests
         var failure = GetValidationFailure(result);
         var error = Assert.Single(failure.Errors);
 
-        Assert.Equal("brewingMethod.name.required", error.Code);
-        Assert.Equal(nameof(BrewingMethod.Name), error.Field);
+        Assert.Equal(ValidationErrorCode.BrewingMethodNameRequired, error.Code);
+        Assert.Equal(ValidationField.BrewingMethodName, error.Field);
     }
 
     [Fact]
@@ -50,8 +50,8 @@ public sealed class BrewingMethodTests
         var failure = GetValidationFailure(renameResult);
         var error = Assert.Single(failure.Errors);
 
-        Assert.Equal("brewingMethod.name.required", error.Code);
-        Assert.Equal(nameof(BrewingMethod.Name), error.Field);
+        Assert.Equal(ValidationErrorCode.BrewingMethodNameRequired, error.Code);
+        Assert.Equal(ValidationField.BrewingMethodName, error.Field);
     }
 
     [Fact]
@@ -72,9 +72,7 @@ public sealed class BrewingMethodTests
         {
             BrewingMethod brewingMethod => brewingMethod,
             ValidationFailure failure => throw new InvalidOperationException(
-                $"Expected a Brewing Method, but got {failure.Errors.Count} validation error(s)."),
-            Error error => throw new InvalidOperationException(
-                $"Expected a Brewing Method, but got {error.Code}.")
+                $"Expected a Brewing Method, but got {failure.Errors.Count} validation error(s).")
         };
     }
 
@@ -83,9 +81,7 @@ public sealed class BrewingMethodTests
         return result switch
         {
             BrewingMethod => throw new InvalidOperationException("Expected a validation error."),
-            ValidationFailure failure => failure,
-            Error error => throw new InvalidOperationException(
-                $"Expected a ValidationFailure, but got {error.Code}.")
+            ValidationFailure failure => failure
         };
     }
 

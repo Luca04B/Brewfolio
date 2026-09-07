@@ -49,18 +49,12 @@ public sealed class CoffeeBrew
 
         if (coffeeBeanId is null || coffeeBeanId.IsEmpty())
         {
-            errors.Add(new ValidationError(
-                "coffeeBrew.coffeeBeanId.required",
-                nameof(CoffeeBeanId),
-                "Coffee Bean id is required."));
+            errors.Add(new ValidationError(ValidationErrorCode.CoffeeBrewCoffeeBeanRequired));
         }
 
         if (recipeId is null || recipeId.IsEmpty())
         {
-            errors.Add(new ValidationError(
-                "coffeeBrew.recipeId.required",
-                nameof(RecipeId),
-                "Recipe id is required."));
+            errors.Add(new ValidationError(ValidationErrorCode.CoffeeBrewRecipeRequired));
         }
 
         if (!IsValidRating(rating))
@@ -105,10 +99,7 @@ public sealed class CoffeeBrew
 
     private static ValidationError InvalidRating()
     {
-        return new ValidationError(
-            "coffeeBrew.rating.outOfRange",
-            nameof(Rating),
-            "Rating must be between 1 and 5.");
+        return new ValidationError(ValidationErrorCode.CoffeeBrewRatingOutOfRange);
     }
 
     private static string? NormalizeNotes(string? notes)

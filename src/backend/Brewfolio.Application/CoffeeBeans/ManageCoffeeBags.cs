@@ -8,7 +8,7 @@ public sealed class CreateCoffeeBagHandler(
     ICoffeeBeanRepository repository,
     TimeProvider timeProvider)
 {
-    public async Task<Result<CoffeeBeanDto>> HandleAsync(
+    public async Task<CoffeeBeanResult<CoffeeBeanDto>> HandleAsync(
         CoffeeBeanId coffeeBeanId,
         CoffeeBagInput input,
         CancellationToken cancellationToken)
@@ -16,7 +16,7 @@ public sealed class CreateCoffeeBagHandler(
         var coffeeBean = await repository.GetAsync(coffeeBeanId, cancellationToken);
         if (coffeeBean is null)
         {
-            return Error.NotFound("coffeeBean.notFound", "Coffee Bean was not found.");
+            return new CoffeeBeanError(CoffeeBeanErrorCode.CoffeeBeanNotFound);
         }
 
         var now = timeProvider.GetUtcNow();
@@ -29,7 +29,7 @@ public sealed class CreateCoffeeBagHandler(
             input.IsInStock,
             DateOnly.FromDateTime(now.UtcDateTime),
             now);
-        if (result is Error error) return error;
+        if (result is ValidationFailure failure) return failure;
         if (result is not CoffeeBag coffeeBag) throw new InvalidOperationException("Unexpected Coffee Bag result.");
 
         await repository.AddBagAsync(coffeeBag, cancellationToken);
@@ -41,14 +41,14 @@ public sealed class ReplaceCoffeeBagHandler(
     ICoffeeBeanRepository repository,
     TimeProvider timeProvider)
 {
-    public async Task<Result<CoffeeBeanDto>> HandleAsync(
+    public async Task<CoffeeBeanResult<CoffeeBeanDto>> HandleAsync(
         CoffeeBeanId coffeeBeanId,
         CoffeeBagId coffeeBagId,
         CoffeeBagInput input,
         CancellationToken cancellationToken)
     {
         var coffeeBean = await repository.GetAsync(coffeeBeanId, cancellationToken);
-        if (coffeeBean is null) return Error.NotFound("coffeeBean.notFound", "Coffee Bean was not found.");
+        if (coffeeBean is null) return CoffeeBagErrors.CoffeeBeanNotFound();
         var now = timeProvider.GetUtcNow();
         var result = coffeeBean.ReplaceBag(
             coffeeBagId,
@@ -60,7 +60,8 @@ public sealed class ReplaceCoffeeBagHandler(
             input.IsInStock,
             DateOnly.FromDateTime(now.UtcDateTime),
             now);
-        if (result is Error error) return error;
+        if (result is CoffeeBagNotFound) return CoffeeBagErrors.CoffeeBagNotFoundError();
+        if (result is ValidationFailure failure) return failure;
         await repository.SaveChangesAsync(cancellationToken);
         return CoffeeBeanDto.From(coffeeBean, DateOnly.FromDateTime(now.UtcDateTime));
     }
@@ -70,19 +71,20 @@ public sealed class OpenCoffeeBagHandler(
     ICoffeeBeanRepository repository,
     TimeProvider timeProvider)
 {
-    public async Task<Result<CoffeeBeanDto>> HandleAsync(
+    public async Task<CoffeeBeanResult<CoffeeBeanDto>> HandleAsync(
         CoffeeBeanId coffeeBeanId,
         CoffeeBagId coffeeBagId,
         CancellationToken cancellationToken)
     {
         var coffeeBean = await repository.GetAsync(coffeeBeanId, cancellationToken);
-        if (coffeeBean is null) return Error.NotFound("coffeeBean.notFound", "Coffee Bean was not found.");
+        if (coffeeBean is null) return CoffeeBagErrors.CoffeeBeanNotFound();
         var now = timeProvider.GetUtcNow();
         var result = coffeeBean.MarkBagOpened(
             coffeeBagId,
             DateOnly.FromDateTime(now.UtcDateTime),
             now);
-        if (result is Error error) return error;
+        if (result is CoffeeBagNotFound) return CoffeeBagErrors.CoffeeBagNotFoundError();
+        if (result is ValidationFailure failure) return failure;
         await repository.SaveChangesAsync(cancellationToken);
         return CoffeeBeanDto.From(coffeeBean, DateOnly.FromDateTime(now.UtcDateTime));
     }
@@ -92,17 +94,18 @@ public sealed class SetCoffeeBagStockHandler(
     ICoffeeBeanRepository repository,
     TimeProvider timeProvider)
 {
-    public async Task<Result<CoffeeBeanDto>> HandleAsync(
+    public async Task<CoffeeBeanResult<CoffeeBeanDto>> HandleAsync(
         CoffeeBeanId coffeeBeanId,
         CoffeeBagId coffeeBagId,
         bool isInStock,
         CancellationToken cancellationToken)
     {
         var coffeeBean = await repository.GetAsync(coffeeBeanId, cancellationToken);
-        if (coffeeBean is null) return Error.NotFound("coffeeBean.notFound", "Coffee Bean was not found.");
+        if (coffeeBean is null) return CoffeeBagErrors.CoffeeBeanNotFound();
         var now = timeProvider.GetUtcNow();
         var result = coffeeBean.SetBagStock(coffeeBagId, isInStock, now);
-        if (result is Error error) return error;
+        if (result is CoffeeBagNotFound) return CoffeeBagErrors.CoffeeBagNotFoundError();
+        if (result is ValidationFailure failure) return failure;
         await repository.SaveChangesAsync(cancellationToken);
         return CoffeeBeanDto.From(coffeeBean, DateOnly.FromDateTime(now.UtcDateTime));
     }
@@ -112,18 +115,28 @@ public sealed class DeleteCoffeeBagHandler(
     ICoffeeBeanRepository repository,
     TimeProvider timeProvider)
 {
-    public async Task<Result<CoffeeBeanDto>> HandleAsync(
+    public async Task<CoffeeBeanResult<CoffeeBeanDto>> HandleAsync(
         CoffeeBeanId coffeeBeanId,
         CoffeeBagId coffeeBagId,
         CancellationToken cancellationToken)
     {
         var coffeeBean = await repository.GetAsync(coffeeBeanId, cancellationToken);
-        if (coffeeBean is null) return Error.NotFound("coffeeBean.notFound", "Coffee Bean was not found.");
+        if (coffeeBean is null) return CoffeeBagErrors.CoffeeBeanNotFound();
         var result = coffeeBean.RemoveBag(coffeeBagId);
-        if (result is Error error) return error;
+        if (result is CoffeeBagNotFound) return CoffeeBagErrors.CoffeeBagNotFoundError();
+        if (result is ValidationFailure failure) return failure;
         await repository.SaveChangesAsync(cancellationToken);
         return CoffeeBeanDto.From(
             coffeeBean,
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime));
     }
+}
+
+file static class CoffeeBagErrors
+{
+    public static CoffeeBeanError CoffeeBeanNotFound() =>
+        new(CoffeeBeanErrorCode.CoffeeBeanNotFound);
+
+    public static CoffeeBeanError CoffeeBagNotFoundError() =>
+        new(CoffeeBeanErrorCode.CoffeeBagNotFound);
 }
