@@ -1,4 +1,6 @@
+using Brewfolio.Domain.CoffeeBeans;
 using Brewfolio.Domain.CoffeeBrews;
+using Brewfolio.Domain.Recipes;
 using Brewfolio.Domain.Results;
 
 namespace Brewfolio.UnitTests.CoffeeBrews;
@@ -8,8 +10,8 @@ public sealed class CoffeeBrewTests
     [Fact]
     public void CreateLinksCoffeeBeanAndRecipe()
     {
-        var coffeeBeanId = Guid.NewGuid();
-        var recipeId = Guid.NewGuid();
+        var coffeeBeanId = new CoffeeBeanId(Guid.NewGuid());
+        var recipeId = new RecipeId(Guid.NewGuid());
         var brewedAt = DateTimeOffset.UtcNow;
 
         var result = CoffeeBrew.Create(
@@ -32,8 +34,8 @@ public sealed class CoffeeBrewTests
     public void CreateRejectsRatingsOutsideTheOneToFiveRange(int rating)
     {
         var result = CoffeeBrew.Create(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
+            new CoffeeBeanId(Guid.NewGuid()),
+            new RecipeId(Guid.NewGuid()),
             DateTimeOffset.UtcNow,
             rating);
         var error = Assert.Single(GetValidationFailure(result).Errors);
@@ -45,8 +47,8 @@ public sealed class CoffeeBrewTests
     public void CreateReturnsAllIndependentValidationErrors()
     {
         Result<CoffeeBrew> result = CoffeeBrew.Create(
-            Guid.Empty,
-            Guid.Empty,
+            new CoffeeBeanId(Guid.Empty),
+            new RecipeId(Guid.Empty),
             DateTimeOffset.UtcNow,
             6);
         var failure = GetValidationFailure(result);
@@ -62,8 +64,8 @@ public sealed class CoffeeBrewTests
     public void UpdateRatingRejectsAnInvalidRatingWithoutChangingTheBrew()
     {
         var createResult = CoffeeBrew.Create(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
+            new CoffeeBeanId(Guid.NewGuid()),
+            new RecipeId(Guid.NewGuid()),
             DateTimeOffset.UtcNow,
             4);
         var coffeeBrew = GetCreatedCoffeeBrew(createResult);
@@ -80,8 +82,8 @@ public sealed class CoffeeBrewTests
     public void UpdateRatingChangesTheRatingAndReturnsSuccess()
     {
         var createResult = CoffeeBrew.Create(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
+            new CoffeeBeanId(Guid.NewGuid()),
+            new RecipeId(Guid.NewGuid()),
             DateTimeOffset.UtcNow,
             4);
         var coffeeBrew = GetCreatedCoffeeBrew(createResult);
@@ -97,7 +99,9 @@ public sealed class CoffeeBrewTests
         return result switch
         {
             CoffeeBrew => throw new InvalidOperationException("Expected a validation error."),
-            ValidationFailure failure => failure
+            ValidationFailure failure => failure,
+            Error error => throw new InvalidOperationException(
+                $"Expected a ValidationFailure, but got {error.Code}.")
         };
     }
 
@@ -107,7 +111,9 @@ public sealed class CoffeeBrewTests
         {
             CoffeeBrew coffeeBrew => coffeeBrew,
             ValidationFailure failure => throw new InvalidOperationException(
-                $"Expected a Coffee Brew, but got {failure.Errors.Count} validation error(s).")
+                $"Expected a Coffee Brew, but got {failure.Errors.Count} validation error(s)."),
+            Error error => throw new InvalidOperationException(
+                $"Expected a Coffee Brew, but got {error.Code}.")
         };
     }
 

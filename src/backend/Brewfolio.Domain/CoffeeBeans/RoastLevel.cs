@@ -4,7 +4,8 @@ public enum RoastLevel
 {
     Unknown = 0,
     Light = 1,
-    Medium = 2,
-    Dark = 3
+    MediumLight = 2,
+    Medium = 3,
+    MediumDark = 4,
+    Dark = 5
 }
-

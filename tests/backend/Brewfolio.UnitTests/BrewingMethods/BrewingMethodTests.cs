@@ -8,18 +8,18 @@ public sealed class BrewingMethodTests
     [Fact]
     public void CreateBuildsAnActiveBrewingMethod()
     {
-        var result = BrewingMethod.Create("V60");
+        var result = BrewingMethod.Create(new BrewingMethodName("V60"));
         var brewingMethod = GetCreatedBrewingMethod(result);
 
-        Assert.NotEqual(Guid.Empty, brewingMethod.Id);
-        Assert.Equal("V60", brewingMethod.Name);
+        Assert.False(brewingMethod.Id.IsEmpty());
+        Assert.Equal("V60", brewingMethod.Name.Value);
         Assert.True(brewingMethod.IsActive);
     }
 
     [Fact]
     public void CreateRejectsAnEmptyName()
     {
-        Result<BrewingMethod> result = BrewingMethod.Create(" ");
+        Result<BrewingMethod> result = BrewingMethod.Create(new BrewingMethodName(" "));
         var failure = GetValidationFailure(result);
         var error = Assert.Single(failure.Errors);
 
@@ -30,7 +30,7 @@ public sealed class BrewingMethodTests
     [Fact]
     public void BrewingMethodCanBeDeactivatedAndActivated()
     {
-        var result = BrewingMethod.Create("V60");
+        var result = BrewingMethod.Create(new BrewingMethodName("V60"));
         var brewingMethod = GetCreatedBrewingMethod(result);
 
         brewingMethod.Deactivate();
@@ -43,10 +43,10 @@ public sealed class BrewingMethodTests
     [Fact]
     public void RenameRejectsAnEmptyName()
     {
-        var result = BrewingMethod.Create("V60");
+        var result = BrewingMethod.Create(new BrewingMethodName("V60"));
         var brewingMethod = GetCreatedBrewingMethod(result);
 
-        var renameResult = brewingMethod.Rename(" ");
+        var renameResult = brewingMethod.Rename(new BrewingMethodName(" "));
         var failure = GetValidationFailure(renameResult);
         var error = Assert.Single(failure.Errors);
 
@@ -57,13 +57,13 @@ public sealed class BrewingMethodTests
     [Fact]
     public void RenameChangesTheNameAndReturnsSuccess()
     {
-        var createResult = BrewingMethod.Create("V60");
+        var createResult = BrewingMethod.Create(new BrewingMethodName("V60"));
         var brewingMethod = GetCreatedBrewingMethod(createResult);
 
-        var result = brewingMethod.Rename("AeroPress");
+        var result = brewingMethod.Rename(new BrewingMethodName("AeroPress"));
 
         Assert.True(result is Success);
-        Assert.Equal("AeroPress", brewingMethod.Name);
+        Assert.Equal("AeroPress", brewingMethod.Name.Value);
     }
 
     private static BrewingMethod GetCreatedBrewingMethod(Result<BrewingMethod> result)
@@ -72,7 +72,9 @@ public sealed class BrewingMethodTests
         {
             BrewingMethod brewingMethod => brewingMethod,
             ValidationFailure failure => throw new InvalidOperationException(
-                $"Expected a Brewing Method, but got {failure.Errors.Count} validation error(s).")
+                $"Expected a Brewing Method, but got {failure.Errors.Count} validation error(s)."),
+            Error error => throw new InvalidOperationException(
+                $"Expected a Brewing Method, but got {error.Code}.")
         };
     }
 
@@ -81,7 +83,9 @@ public sealed class BrewingMethodTests
         return result switch
         {
             BrewingMethod => throw new InvalidOperationException("Expected a validation error."),
-            ValidationFailure failure => failure
+            ValidationFailure failure => failure,
+            Error error => throw new InvalidOperationException(
+                $"Expected a ValidationFailure, but got {error.Code}.")
         };
     }
 

@@ -1,0 +1,275 @@
+<header class="topbar">
+  <a class="brand" routerLink="/coffee-beans"><span>B</span>Brewfolio</a>
+  <a class="back-link" routerLink="/coffee-beans">← {{ copy().back }}</a>
+</header>
+
+<main>
+  @if (state() === 'loading') {
+    <section class="state" role="status">{{ copy().loading }}</section>
+  } @else if (state() === 'not-found') {
+    <section class="state">
+      <p class="eyebrow">404</p>
+      <h1>{{ copy().notFound }}</h1>
+      <a routerLink="/coffee-beans">{{ copy().back }}</a>
+    </section>
+  } @else if (state() === 'error') {
+    <section class="state" role="alert">
+      <h1>{{ copy().loadError }}</h1>
+      <a routerLink="/coffee-beans">{{ copy().back }}</a>
+    </section>
+  } @else if (coffeeBean(); as bean) {
+    @if (success()) {
+      <p class="success" role="status">
+        {{ success() === 'created' ? copy().successCreated : copy().successUpdated }}
+      </p>
+    }
+
+    <div class="detail-layout">
+      <aside class="media-column">
+        <div class="art">
+          @if (bean.imageUrl && !imageFailed()) {
+            <img [src]="bean.imageUrl" [alt]="bean.name" (error)="imageFailed.set(true)" />
+          } @else {
+            <span [attr.aria-label]="bean.name"
+              >{{ bean.roaster.charAt(0) }}{{ bean.name.charAt(0) }}</span
+            >
+          }
+        </div>
+
+        <div class="image-actions">
+          <span>{{ bean.imageUrl ? copy().imagePresent : copy().noImage }}</span>
+          <label
+            >{{ bean.imageUrl ? copy().imageReplace : copy().imageAdd
+            }}<input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              (change)="selectReplacementImage($event)"
+          /></label>
+          @if (imagePreview()) {
+            <img [src]="imagePreview()" alt="Image preview" />
+          }
+          @if (pendingImage()) {
+            <button type="button" (click)="saveReplacementImage()">{{ copy().imageSave }}</button>
+          }
+          @if (bean.imageUrl) {
+            <button type="button" (click)="removeImage()">{{ copy().imageRemove }}</button>
+          }
+        </div>
+      </aside>
+
+      <div class="detail-content">
+        <section class="identity">
+          <p class="eyebrow">{{ bean.roaster }}</p>
+          <h1>{{ bean.name }}</h1>
+          <p class="description">{{ bean.description || copy().noDescription }}</p>
+          <div class="product-actions">
+            <button class="primary" type="button" (click)="editProfile()">{{ copy().edit }}</button>
+            @if (bean.productUrl) {
+              <a
+                class="product-link"
+                data-testid="product-link"
+                [href]="bean.productUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                >{{ copy().product }}</a
+              >
+            }
+            <button
+              class="danger"
+              data-testid="delete-coffee-bean"
+              type="button"
+              (click)="deleteCoffeeBean()"
+            >
+              {{ copy().delete }}
+            </button>
+          </div>
+        </section>
+
+        @if (profileFormOpen()) {
+          <section class="profile-editor">
+            <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+              <label>{{ copy().name }}<input formControlName="name" /></label
+              ><label>{{ copy().roaster }}<input formControlName="roaster" /></label>
+              <label>{{ copy().origin }}<input formControlName="origin" /></label
+              ><label
+                >{{ copy().roast
+                }}<select formControlName="roastLevel">
+                  @for (level of roastLevels; track level) {
+                    <option [value]="level">{{ level }}</option>
+                  }
+                </select></label
+              >
+              <label class="wide"
+                >{{ copy().description
+                }}<textarea rows="4" formControlName="description"></textarea></label
+              ><label class="wide"
+                >{{ copy().productUrl }}<input formControlName="productUrl"
+              /></label>
+              @if (profileError()) {
+                <p role="alert">{{ copy().actionSaveError }}</p>
+              }
+              <div class="form-actions wide">
+                <button type="button" (click)="profileFormOpen.set(false)">
+                  {{ copy().cancel }}</button
+                ><button type="submit">{{ copy().save }}</button>
+              </div>
+            </form>
+          </section>
+        }
+
+        <section class="archive" aria-label="Product profile">
+          <header>
+            <div>
+              <p class="eyebrow">{{ copy().profile }}</p>
+              <h2>{{ copy().provenance }}</h2>
+            </div>
+          </header>
+          <p class="sensory-note">{{ copy().sensory }}</p>
+          <dl>
+            <div>
+              <dt>{{ copy().origin }}</dt>
+              <dd>{{ bean.origin || copy().missing }}</dd>
+            </div>
+            <div>
+              <dt>{{ copy().roast }}</dt>
+              <dd>
+                <span>{{ bean.roastLevel }}</span>
+              </dd>
+            </div>
+            <div>
+              <dt>{{ copy().created }}</dt>
+              <dd>{{ formatDate(bean.createdAt) }}</dd>
+            </div>
+            <div>
+              <dt>{{ copy().updated }}</dt>
+              <dd>{{ formatDate(bean.updatedAt) }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="bags">
+          <header>
+            <div>
+              <p class="eyebrow">Coffee Bags</p>
+              <h2>{{ copy().bags }}</h2>
+            </div>
+            @if (bean.bags.length > 0) {
+              <button type="button" (click)="addBag()">＋ {{ copy().addBag }}</button>
+            }
+          </header>
+          @if (bean.bags.length === 0) {
+            <div class="bags-placeholder">
+              <span class="empty-bag-icon" aria-hidden="true"></span>
+              <div>
+                <h3>{{ copy().noBags }}</h3>
+                <p>{{ copy().noBagsText }}</p>
+              </div>
+              <button class="primary" type="button" (click)="addBag()">
+                ＋ {{ copy().addBag }}
+              </button>
+            </div>
+          } @else {
+            <div class="summary">
+              <span>{{ bean.bagCount }} Bags</span
+              ><span>{{ bean.isInStock ? copy().inStock : copy().outOfStock }}</span
+              ><span>{{ formatPrice(bean.weightedPricePer100Grams) }} / 100 g</span>
+            </div>
+            <div class="ledger">
+              @for (bag of bean.bags; track bag.id) {
+                <article>
+                  <div>
+                    <small>{{ copy().purchased }}</small
+                    ><strong>{{ formatDate(bag.purchasedOn) }}</strong>
+                  </div>
+                  <div>
+                    <small>{{ copy().roasted }}</small
+                    ><strong>{{ formatDate(bag.roastedOn) }}</strong>
+                  </div>
+                  <div>
+                    <small>{{ copy().opened }}</small
+                    ><strong>{{ formatDate(bag.openedOn) }}</strong>
+                  </div>
+                  <div>
+                    <small>{{ copy().bag }}</small
+                    ><strong
+                      >{{ bag.initialWeightGrams }} g · {{ formatPrice(bag.pricePaid) }}</strong
+                    >
+                  </div>
+                  <div class="bag-actions">
+                    @if (!bag.openedOn) {
+                      <button type="button" (click)="openToday(bag)">{{ copy().openToday }}</button>
+                    }
+                    <button type="button" (click)="toggleStock(bag)">
+                      {{ bag.isInStock ? copy().fromStock : copy().toStock }}
+                    </button>
+                    <button type="button" (click)="editBag(bag)">{{ copy().edit }}</button>
+                    <button class="danger" type="button" (click)="deleteBag(bag)">
+                      {{ copy().delete }}
+                    </button>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+          @if (bagError()) {
+            <p class="bag-error" role="alert">{{ copy().actionError }}</p>
+          }
+          @if (bagFormOpen()) {
+            <form class="bag-form" [formGroup]="bagForm" (ngSubmit)="saveBag()">
+              <label
+                >{{ copy().purchaseDate }}<input type="date" formControlName="purchasedOn"
+              /></label>
+              <label>{{ copy().roastDate }}<input type="date" formControlName="roastedOn" /></label>
+              <label>{{ copy().openedDate }}<input type="date" formControlName="openedOn" /></label>
+              <label
+                >{{ copy().weight
+                }}<input type="number" min="1" formControlName="initialWeightGrams"
+              /></label>
+              <label
+                >{{ copy().price
+                }}<input type="number" min="0" step="0.01" formControlName="pricePaid"
+              /></label>
+              <label class="check"
+                ><input type="checkbox" formControlName="isInStock" /> {{ copy().stock }}</label
+              >
+              <div class="form-actions">
+                <button type="button" (click)="bagFormOpen.set(false)">{{ copy().cancel }}</button
+                ><button type="submit">{{ copy().save }}</button>
+              </div>
+            </form>
+          }
+        </section>
+      </div>
+    </div>
+  }
+</main>
+
+@if (confirmation(); as dialog) {
+  <div class="confirmation-backdrop" (click)="cancelConfirmation()">
+    <section
+      class="confirmation-dialog"
+      [class.warning]="dialog.tone === 'warning'"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirmation-title"
+      aria-describedby="confirmation-message"
+      (click)="$event.stopPropagation()"
+    >
+      <span class="confirmation-icon" aria-hidden="true">!</span>
+      <p class="eyebrow">Brewfolio</p>
+      <h2 id="confirmation-title">{{ dialog.title }}</h2>
+      <p id="confirmation-message">{{ dialog.message }}</p>
+      <div class="confirmation-actions">
+        <button type="button" autofocus (click)="cancelConfirmation()">{{ copy().cancel }}</button>
+        <button
+          class="confirm"
+          data-testid="confirm-action"
+          type="button"
+          (click)="confirmAction()"
+        >
+          {{ dialog.confirmLabel }}
+        </button>
+      </div>
+    </section>
+  </div>
+}

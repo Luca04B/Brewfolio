@@ -1,3 +1,4 @@
+using Brewfolio.Domain.BrewingMethods;
 using Brewfolio.Domain.Recipes;
 using Brewfolio.Domain.Results;
 
@@ -9,10 +10,10 @@ public sealed class RecipeTests
     public void CreateStoresTheRecipeParameters()
     {
         var targetBrewTime = TimeSpan.FromMinutes(3);
-        var brewingMethodId = Guid.NewGuid();
+        var brewingMethodId = new BrewingMethodId(Guid.NewGuid());
 
         var result = Recipe.Create(
-            "V60 Standard",
+            new RecipeName("V60 Standard"),
             brewingMethodId,
             15m,
             250m,
@@ -29,8 +30,8 @@ public sealed class RecipeTests
     public void CreateRejectsANonPositiveTargetBrewTime()
     {
         var result = Recipe.Create(
-            "V60 Standard",
-            Guid.NewGuid(),
+            new RecipeName("V60 Standard"),
+            new BrewingMethodId(Guid.NewGuid()),
             15m,
             250m,
             94m,
@@ -45,8 +46,8 @@ public sealed class RecipeTests
     public void CreateRejectsAnEmptyBrewingMethodId()
     {
         var result = Recipe.Create(
-            "V60 Standard",
-            Guid.Empty,
+            new RecipeName("V60 Standard"),
+            new BrewingMethodId(Guid.Empty),
             15m,
             250m,
             94m,
@@ -61,8 +62,8 @@ public sealed class RecipeTests
     public void CreateReturnsAllIndependentValidationErrors()
     {
         Result<Recipe> result = Recipe.Create(
-            " ",
-            Guid.Empty,
+            new RecipeName(" "),
+            new BrewingMethodId(Guid.Empty),
             0m,
             0m,
             101m,
@@ -85,8 +86,8 @@ public sealed class RecipeTests
     public void CreateAcceptsAnExplicitlyUnknownGrindSize()
     {
         var result = Recipe.Create(
-            "V60 Standard",
-            Guid.NewGuid(),
+            new RecipeName("V60 Standard"),
+            new BrewingMethodId(Guid.NewGuid()),
             15m,
             250m,
             94m,
@@ -102,7 +103,9 @@ public sealed class RecipeTests
         return result switch
         {
             Recipe => throw new InvalidOperationException("Expected a validation error."),
-            ValidationFailure failure => failure
+            ValidationFailure failure => failure,
+            Error error => throw new InvalidOperationException(
+                $"Expected a ValidationFailure, but got {error.Code}.")
         };
     }
 
@@ -112,7 +115,9 @@ public sealed class RecipeTests
         {
             Recipe recipe => recipe,
             ValidationFailure failure => throw new InvalidOperationException(
-                $"Expected a Recipe, but got {failure.Errors.Count} validation error(s).")
+                $"Expected a Recipe, but got {failure.Errors.Count} validation error(s)."),
+            Error error => throw new InvalidOperationException(
+                $"Expected a Recipe, but got {error.Code}.")
         };
     }
 }

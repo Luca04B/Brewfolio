@@ -23,6 +23,31 @@ public sealed record ValidationFailure
 
 public readonly record struct Success;
 
+public enum ErrorType
+{
+    Validation = 1,
+    NotFound = 2,
+    Conflict = 3
+}
+
+public sealed record Error(string Code, string Description, ErrorType Type)
+{
+    public static Error Validation(string code, string description)
+    {
+        return new Error(code, description, ErrorType.Validation);
+    }
+
+    public static Error NotFound(string code, string description)
+    {
+        return new Error(code, description, ErrorType.NotFound);
+    }
+
+    public static Error Conflict(string code, string description)
+    {
+        return new Error(code, description, ErrorType.Conflict);
+    }
+}
+
 public union Result(Success, ValidationFailure);
 
-public union Result<T>(T, ValidationFailure);
+public union Result<T>(T, ValidationFailure, Error);

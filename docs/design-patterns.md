@@ -12,6 +12,8 @@ Organize each user capability end to end. `CreateCoffeeBean`, `ListCoffeeBeans`,
 
 Use a Domain Entity when identity and lifecycle matter, such as `CoffeeBean`, `Recipe`, and `CoffeeBrew`. Introduce a Value Object when a value develops reusable rules or multiple parts that primitives cannot express clearly. The MVP keeps price as a decimal amount in euros.
 
+Use StrongOf-based types for Domain Entity identifiers and for distinct names that could otherwise be accidentally exchanged, such as a Coffee Bean name and Roaster name. Keep transport contracts primitive and translate at the Application seam. Descriptions, notes, external URLs, timestamps, and other values without an earned invariant or ambiguity remain primitive.
+
 ### Factory Method
 
 Create an Entity through a named factory when construction must enforce invariants or return an expected validation failure. Keep a normal constructor when it expresses the rules just as clearly.

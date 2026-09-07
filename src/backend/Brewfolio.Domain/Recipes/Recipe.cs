@@ -1,3 +1,4 @@
+using Brewfolio.Domain.BrewingMethods;
 using Brewfolio.Domain.Results;
 
 namespace Brewfolio.Domain.Recipes;
@@ -9,9 +10,9 @@ public sealed class Recipe
     }
 
     private Recipe(
-        Guid id,
-        string name,
-        Guid brewingMethodId,
+        RecipeId id,
+        RecipeName name,
+        BrewingMethodId brewingMethodId,
         decimal coffeeAmountInGrams,
         decimal waterAmountInGrams,
         decimal waterTemperatureInCelsius,
@@ -28,11 +29,11 @@ public sealed class Recipe
         TargetBrewTime = targetBrewTime;
     }
 
-    public Guid Id { get; private set; }
+    public RecipeId Id { get; private set; } = null!;
 
-    public string Name { get; private set; } = null!;
+    public RecipeName Name { get; private set; } = null!;
 
-    public Guid BrewingMethodId { get; private set; }
+    public BrewingMethodId BrewingMethodId { get; private set; } = null!;
 
     public decimal CoffeeAmountInGrams { get; private set; }
 
@@ -45,8 +46,8 @@ public sealed class Recipe
     public TimeSpan TargetBrewTime { get; private set; }
 
     public static Result<Recipe> Create(
-        string name,
-        Guid brewingMethodId,
+        RecipeName name,
+        BrewingMethodId brewingMethodId,
         decimal coffeeAmountInGrams,
         decimal waterAmountInGrams,
         decimal waterTemperatureInCelsius,
@@ -55,7 +56,7 @@ public sealed class Recipe
     {
         List<ValidationError> errors = [];
 
-        if (string.IsNullOrWhiteSpace(name))
+        if (name is null || string.IsNullOrWhiteSpace(name.Value))
         {
             errors.Add(new ValidationError(
                 "recipe.name.required",
@@ -63,7 +64,7 @@ public sealed class Recipe
                 "Name is required."));
         }
 
-        if (brewingMethodId == Guid.Empty)
+        if (brewingMethodId is null || brewingMethodId.IsEmpty())
         {
             errors.Add(new ValidationError(
                 "recipe.brewingMethodId.required",
@@ -117,9 +118,9 @@ public sealed class Recipe
         }
 
         return new Recipe(
-            Guid.NewGuid(),
-            name.Trim(),
-            brewingMethodId,
+            new RecipeId(Guid.NewGuid()),
+            new RecipeName(name!.Value.Trim()),
+            brewingMethodId!,
             coffeeAmountInGrams,
             waterAmountInGrams,
             waterTemperatureInCelsius,

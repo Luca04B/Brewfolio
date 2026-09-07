@@ -6,88 +6,113 @@ namespace Brewfolio.UnitTests.CoffeeBeans;
 public sealed class CoffeeBeanTests
 {
     [Fact]
-    public void CreateBuildsAnInStockCoffeeBean()
+    public void CreateBuildsATrimmedProductIdentity()
     {
+        var createdAt = new DateTimeOffset(2026, 9, 4, 9, 30, 0, TimeSpan.Zero);
+
         var result = CoffeeBean.Create(
-            "Ethiopia Bombe",
-            "Example Roasters",
-            "Ethiopia",
-            RoastLevel.Light,
-            18.90m);
+            ParseName("  Ethiopia Bombe  "),
+            ParseRoaster("  Example Roasters  "),
+            createdAt);
         var coffeeBean = GetCreatedCoffeeBean(result);
 
-        Assert.NotEqual(Guid.Empty, coffeeBean.Id);
-        Assert.Equal(18.90m, coffeeBean.Price);
-        Assert.True(coffeeBean.IsInStock);
+        Assert.False(coffeeBean.Id.IsEmpty());
+        Assert.Equal("Ethiopia Bombe", coffeeBean.Name.Value);
+        Assert.Equal("Example Roasters", coffeeBean.Roaster.Value);
+        Assert.Equal(createdAt, coffeeBean.CreatedAt);
+        Assert.Equal(createdAt, coffeeBean.UpdatedAt);
     }
 
     [Fact]
-    public void CreateRejectsANegativePrice()
+    public void CreateBuildsTheCompleteProductProfile()
     {
         var result = CoffeeBean.Create(
-            "Ethiopia Bombe",
-            "Example Roasters",
-            "Ethiopia",
-            RoastLevel.Light,
-            -1m);
-        var failure = GetValidationFailure(result);
-        var error = Assert.Single(failure.Errors);
+            ParseName("Ethiopia Bombe"),
+            ParseRoaster("Example Roasters"),
+            "  Ethiopia, Sidama  ",
+            RoastLevel.MediumLight,
+            "  Floral and juicy.  ",
+            "https://example.com/coffee",
+            DateTimeOffset.UtcNow);
+        var coffeeBean = GetCreatedCoffeeBean(result);
 
-        Assert.Equal("coffeeBean.price.negative", error.Code);
-        Assert.Equal(nameof(CoffeeBean.Price), error.Field);
-        Assert.Equal("Price cannot be negative.", error.Description);
+        Assert.Equal("Ethiopia, Sidama", coffeeBean.Origin);
+        Assert.Equal(RoastLevel.MediumLight, coffeeBean.RoastLevel);
+        Assert.Equal("Floral and juicy.", coffeeBean.Description);
+        Assert.Equal("https://example.com/coffee", coffeeBean.ProductUrl);
     }
 
-    [Fact]
-    public void CreateReturnsAllIndependentValidationErrors()
+    [Theory]
+    [InlineData("ftp://example.com/coffee", "coffeeBean.productUrl.invalid")]
+    [InlineData("example.com/coffee", "coffeeBean.productUrl.invalid")]
+    [InlineData("https://example.com/" + "x", null)]
+    public void CreateValidatesTheProductUrl(string productUrl, string? expectedCode)
     {
-        var result = CoffeeBean.Create(
-            " ",
-            " ",
-            " ",
-            (RoastLevel)99,
-            -1m);
-        var failure = GetValidationFailure(result);
+        if (expectedCode is null)
+        {
+            productUrl = "https://example.com/" + new string('x', 2_048);
+            expectedCode = "coffeeBean.productUrl.tooLong";
+        }
 
-        Assert.Collection(
-            failure.Errors,
-            error => Assert.Equal("coffeeBean.name.required", error.Code),
-            error => Assert.Equal("coffeeBean.roaster.required", error.Code),
-            error => Assert.Equal("coffeeBean.origin.required", error.Code),
-            error => Assert.Equal("coffeeBean.roastLevel.invalid", error.Code),
-            error => Assert.Equal("coffeeBean.price.negative", error.Code));
-    }
-
-    [Fact]
-    public void CreateAcceptsAnExplicitlyUnknownRoastLevel()
-    {
         var result = CoffeeBean.Create(
-            "Ethiopia Bombe",
-            "Example Roasters",
-            "Ethiopia",
+            ParseName("Ethiopia Bombe"),
+            ParseRoaster("Example Roasters"),
+            null,
             RoastLevel.Unknown,
-            18.90m);
-        var coffeeBean = GetCreatedCoffeeBean(result);
+            null,
+            productUrl,
+            DateTimeOffset.UtcNow);
 
-        Assert.Equal(RoastLevel.Unknown, coffeeBean.RoastLevel);
+        Assert.Equal(expectedCode, GetValidationError(result).Code);
     }
 
     [Fact]
-    public void StockCanBeChanged()
+    public void CreateStoresEmptyOptionalTextAsAbsent()
     {
         var result = CoffeeBean.Create(
-            "Ethiopia Bombe",
-            "Example Roasters",
-            "Ethiopia",
-            RoastLevel.Light,
-            18.90m);
+            ParseName("Ethiopia Bombe"),
+            ParseRoaster("Example Roasters"),
+            " ",
+            RoastLevel.Unknown,
+            " ",
+            " ",
+            DateTimeOffset.UtcNow);
         var coffeeBean = GetCreatedCoffeeBean(result);
 
-        coffeeBean.MarkAsOutOfStock();
-        Assert.False(coffeeBean.IsInStock);
+        Assert.Null(coffeeBean.Origin);
+        Assert.Null(coffeeBean.Description);
+        Assert.Null(coffeeBean.ProductUrl);
+    }
 
-        coffeeBean.MarkAsInStock();
-        Assert.True(coffeeBean.IsInStock);
+    [Theory]
+    [InlineData("", "Example Roasters", "coffeeBean.name.required")]
+    [InlineData("   ", "Example Roasters", "coffeeBean.name.required")]
+    [InlineData("Ethiopia Bombe", "", "coffeeBean.roaster.required")]
+    [InlineData("Ethiopia Bombe", "   ", "coffeeBean.roaster.required")]
+    public void CreateRejectsMissingProductIdentity(string name, string roaster, string expectedCode)
+    {
+        var value = string.IsNullOrWhiteSpace(name)
+            ? CoffeeBeanName.Parse(name).Value
+            : RoasterName.Parse(roaster).Value;
+        var error = Assert.IsType<Error>(value);
+
+        Assert.Equal(ErrorType.Validation, error.Type);
+        Assert.Equal(expectedCode, error.Code);
+    }
+
+    [Theory]
+    [InlineData(true, "coffeeBean.name.tooLong")]
+    [InlineData(false, "coffeeBean.roaster.tooLong")]
+    public void CreateRejectsProductIdentityLongerThan120Characters(bool nameIsTooLong, string expectedCode)
+    {
+        var longValue = new string('x', 121);
+        var value = nameIsTooLong
+            ? CoffeeBeanName.Parse(longValue).Value
+            : RoasterName.Parse(longValue).Value;
+        var error = Assert.IsType<Error>(value);
+
+        Assert.Equal(ErrorType.Validation, error.Type);
+        Assert.Equal(expectedCode, error.Code);
     }
 
     private static CoffeeBean GetCreatedCoffeeBean(Result<CoffeeBean> result)
@@ -96,16 +121,25 @@ public sealed class CoffeeBeanTests
         {
             CoffeeBean coffeeBean => coffeeBean,
             ValidationFailure failure => throw new InvalidOperationException(
-                $"Expected a Coffee Bean, but got {failure.Errors.Count} validation error(s).")
+                $"Expected a Coffee Bean, but got {failure.Errors.Count} validation error(s)."),
+            Error error => throw new InvalidOperationException($"Expected a Coffee Bean, but got {error.Code}.")
         };
     }
 
-    private static ValidationFailure GetValidationFailure(Result<CoffeeBean> result)
+    private static Error GetValidationError(Result<CoffeeBean> result)
     {
         return result switch
         {
             CoffeeBean => throw new InvalidOperationException("Expected a validation error."),
-            ValidationFailure failure => failure
+            ValidationFailure failure => throw new InvalidOperationException(
+                $"Expected an Error, but got {failure.Errors.Count} validation error(s)."),
+            Error error => error
         };
     }
+
+    private static CoffeeBeanName ParseName(string value) =>
+        Assert.IsType<CoffeeBeanName>(CoffeeBeanName.Parse(value).Value);
+
+    private static RoasterName ParseRoaster(string value) =>
+        Assert.IsType<RoasterName>(RoasterName.Parse(value).Value);
 }

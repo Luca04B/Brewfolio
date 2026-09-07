@@ -46,6 +46,8 @@ The Angular application owns browser presentation, navigation, and client-side i
 
 SQL Server is the initial local database choice. Persistence has not yet been wired into the starter API; it will enter with the first feature that needs durable data.
 
+Coffee Bean images are stored as private objects through an application-owned S3-compatible storage port. MinIO provides the local adapter and persistent Docker volume; the database stores image references and pending cleanup work rather than image bytes. This keeps hosted object-storage providers outside the application core while accepting that database and object operations require explicit failure recovery. See [ADR 0003](adr/0003-store-images-in-s3-compatible-object-storage.md).
+
 Authentication is intentionally deferred. OAuth 2.0, OpenID Connect, JWT-based API authorization, and a locally hosted identity provider such as Keycloak remain candidates rather than current dependencies.
 
 ## Deployment

@@ -21,8 +21,14 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Brewfolio: Server=sqlserver,1433;Database=Brewfolio;User Id=sa;Password=${MSSQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True
       Frontend__Origin: http://localhost:4200
+      ObjectStorage__ServiceUrl: http://minio:9000
+      ObjectStorage__AccessKey: ${MINIO_ROOT_USER:-brewfolio}
+      ObjectStorage__SecretKey: ${MINIO_ROOT_PASSWORD:-ChangeMe_OnlyForLocalMinio123!}
+      ObjectStorage__BucketName: brewfolio-images
+      ObjectStorage__Initialize: "true"
     depends_on:
       - sqlserver
+      - minio
     ports:
       - "8080:8080"
 
@@ -34,6 +40,18 @@ services:
     ports:
       - "4200:80"
 
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-brewfolio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-ChangeMe_OnlyForLocalMinio123!}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
 volumes:
   sqlserver-data:
-
+  minio-data:

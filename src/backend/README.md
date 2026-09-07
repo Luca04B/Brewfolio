@@ -19,9 +19,15 @@ dotnet run --project src/backend/Brewfolio.Api
 dotnet test Brewfolio.sln
 ```
 
-The development API listens on <http://localhost:5199>. Verify it at `/api` and `/health`.
+The development API listens on <http://localhost:5199>. Verify it at `/api`, `/health`, and
+`/api/coffee-beans`.
 
-Persistence, authentication, and observability packages will be added with the first feature that requires them rather than as unused framework setup.
+Coffee Beans are persisted through EF Core's SQL Server provider. The API applies pending migrations
+when it starts in the Development environment. Supply `ConnectionStrings:Brewfolio` through .NET
+user secrets or an environment variable before running the API natively; Docker Compose configures it
+automatically.
+
+Coffee Bean images are re-encoded into WebP variants and stored privately through the application-owned image port. The local adapter uses MinIO's S3-compatible API; Docker Compose configures and persists the private bucket. Failed object cleanup is recorded in SQL Server and retried by a focused background worker.
 
 ## Native Result experiment
 

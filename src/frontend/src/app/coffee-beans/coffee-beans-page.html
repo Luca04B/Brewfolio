@@ -1,0 +1,181 @@
+<div class="editorial-shell">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Brewfolio">
+      <span class="brand-mark">B</span>
+      <span>Brewfolio</span>
+    </a>
+
+    <nav aria-label="Main navigation">
+      <a class="active" href="#collection">{{ copy().navCollection }}</a>
+    </nav>
+
+    <div class="top-actions">
+      <button class="language" type="button" (click)="toggleLanguage()">
+        {{ language() === 'de' ? 'EN' : 'DE' }}
+      </button>
+      <a class="add-button" routerLink="/coffee-beans/new"
+        ><span aria-hidden="true">＋</span>{{ copy().add }}</a
+      >
+    </div>
+  </header>
+
+  <main>
+    @if (success()) {
+      <p class="success" role="status">{{ copy().deleted }}</p>
+    }
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">{{ copy().eyebrow }}</p>
+        <h1 id="page-title">{{ copy().headline }}</h1>
+      </div>
+      <p class="lede">{{ copy().intro }}</p>
+    </section>
+
+    <section id="collection" class="collection" aria-labelledby="collection-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">{{ copy().collectionEyebrow }}</p>
+          <h2 id="collection-title">{{ copy().collectionTitle }}</h2>
+        </div>
+        <span class="collection-count">{{ beans().length }} {{ copy().products }}</span>
+      </div>
+
+      <div class="browse-tools" aria-label="Collection filters">
+        <label class="search-field"
+          ><span>{{ copy().search }}</span
+          ><input
+            type="search"
+            [placeholder]="copy().search"
+            [value]="search()"
+            (input)="searchChanged($any($event.target).value)"
+        /></label>
+        <label
+          ><span>{{ copy().filter }}</span
+          ><select
+            [value]="stock()"
+            (change)="stock.set($any($event.target).value); filtersChanged()"
+          >
+            <option value="all">{{ copy().all }}</option>
+            <option value="true">{{ copy().inStock }}</option>
+            <option value="false">{{ copy().outOfStock }}</option>
+          </select></label
+        >
+        <label
+          ><span>{{ copy().roast }}</span
+          ><select
+            [value]="roastLevel()"
+            (change)="roastLevel.set($any($event.target).value); filtersChanged()"
+          >
+            <option value="all">{{ copy().all }}</option>
+            @for (level of roastLevels; track level) {
+              <option [value]="level">{{ level }}</option>
+            }
+          </select></label
+        >
+        <label
+          ><span>{{ copy().sort }}</span
+          ><select
+            [value]="sort()"
+            (change)="sort.set($any($event.target).value); filtersChanged()"
+          >
+            <option value="LatestActivity">{{ copy().recent }}</option>
+            <option value="Name">{{ copy().nameSort }}</option>
+            <option value="LatestRoastDate">{{ copy().activity }}</option>
+          </select></label
+        >
+      </div>
+
+      @switch (collectionState()) {
+        @case ('loading') {
+          <div class="state-card" role="status">
+            <span class="loader" aria-hidden="true"></span>
+            <p>{{ copy().loading }}</p>
+          </div>
+        }
+        @case ('error') {
+          <div class="state-card error-state" role="alert">
+            <strong>{{ copy().errorTitle }}</strong>
+            <p>{{ copy().errorText }}</p>
+            <button data-testid="retry" type="button" (click)="load()">{{ copy().retry }}</button>
+          </div>
+        }
+        @case ('ready') {
+          @if (beans().length === 0 && (search() || stock() !== 'all' || roastLevel() !== 'all')) {
+            <div class="state-card empty-state">
+              <strong>{{ copy().noResults }}</strong>
+            </div>
+          } @else if (beans().length === 0) {
+            <div class="state-card empty-state" data-testid="empty-state">
+              <span class="empty-mark" aria-hidden="true">B</span>
+              <strong>{{ copy().emptyTitle }}</strong>
+              <p>{{ copy().emptyText }}</p>
+              <a routerLink="/coffee-beans/new">{{ copy().add }} →</a>
+            </div>
+          } @else {
+            <div class="bean-grid">
+              @for (bean of beans(); track bean.id; let index = $index) {
+                <a
+                  class="bean-card"
+                  [class.featured]="index === 0"
+                  [routerLink]="['/coffee-beans', bean.id]"
+                >
+                  <div class="card-art">
+                    @if (bean.imageThumbnailUrl && !failedImages().has(bean.id)) {
+                      <img
+                        [src]="bean.imageThumbnailUrl"
+                        [alt]="bean.name"
+                        loading="lazy"
+                        (error)="imageFailed(bean.id)"
+                      />
+                    } @else {
+                      <span [attr.aria-label]="bean.name">{{ initials(bean) }}</span>
+                      <i aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i>
+                    }
+                  </div>
+                  <div class="card-content">
+                    <p>{{ bean.roaster }}</p>
+                    <h3 data-testid="bean-name">{{ bean.name }}</h3>
+                    <span class="origin">{{ bean.origin || '—' }}</span>
+                    <span class="card-meta">
+                      <em>{{ bean.roastLevel }}</em>
+                      <em [class.muted]="!bean.isInStock">
+                        {{ bean.isInStock ? copy().inStock : copy().outOfStock }}
+                      </em>
+                    </span>
+                    <span class="card-foot">
+                      {{ bean.bagCount }} Bags · {{ formatDate(bean.latestRoastedOn) }} ·
+                      {{ formatPrice(bean.weightedPricePer100Grams) }} / 100 g
+                    </span>
+                  </div>
+                </a>
+              }
+            </div>
+            @if (loadingMore()) {
+              <p class="page-status" role="status">{{ copy().loadingMore }}</p>
+            }
+            @if (nextPageFailed()) {
+              <button class="load-more" type="button" (click)="load(true)">
+                {{ copy().retryMore }}
+              </button>
+            }
+            @if (nextCursor() && !nextPageFailed()) {
+              <button class="load-more" type="button" (click)="load(true)">
+                {{ copy().loadMore }}
+              </button>
+            }
+            @if (reachedEnd()) {
+              <div class="end-state">
+                <span class="end-bean" aria-hidden="true"></span>
+                <div>
+                  <strong>{{ copy().end }}</strong>
+                  <p>{{ copy().endText }}</p>
+                </div>
+                <a href="#collection">{{ copy().collectionTitle }} ↑</a>
+              </div>
+            }
+          }
+        }
+      }
+    </section>
+  </main>
+</div>
