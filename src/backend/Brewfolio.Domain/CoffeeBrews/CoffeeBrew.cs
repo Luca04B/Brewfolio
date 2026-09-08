@@ -1,3 +1,5 @@
+using Brewfolio.Domain.CoffeeBeans;
+using Brewfolio.Domain.Recipes;
 using Brewfolio.Domain.Results;
 
 namespace Brewfolio.Domain.CoffeeBrews;
@@ -9,9 +11,9 @@ public sealed class CoffeeBrew
     }
 
     private CoffeeBrew(
-        Guid id,
-        Guid coffeeBeanId,
-        Guid recipeId,
+        CoffeeBrewId id,
+        CoffeeBeanId coffeeBeanId,
+        RecipeId recipeId,
         DateTimeOffset brewedAt,
         int? rating,
         string? notes)
@@ -24,11 +26,11 @@ public sealed class CoffeeBrew
         Notes = NormalizeNotes(notes);
     }
 
-    public Guid Id { get; private set; }
+    public CoffeeBrewId Id { get; private set; } = null!;
 
-    public Guid CoffeeBeanId { get; private set; }
+    public CoffeeBeanId CoffeeBeanId { get; private set; } = null!;
 
-    public Guid RecipeId { get; private set; }
+    public RecipeId RecipeId { get; private set; } = null!;
 
     public DateTimeOffset BrewedAt { get; private set; }
 
@@ -37,28 +39,22 @@ public sealed class CoffeeBrew
     public string? Notes { get; private set; }
 
     public static Result<CoffeeBrew> Create(
-        Guid coffeeBeanId,
-        Guid recipeId,
+        CoffeeBeanId coffeeBeanId,
+        RecipeId recipeId,
         DateTimeOffset brewedAt,
         int? rating = null,
         string? notes = null)
     {
         List<ValidationError> errors = [];
 
-        if (coffeeBeanId == Guid.Empty)
+        if (coffeeBeanId is null || coffeeBeanId.IsEmpty())
         {
-            errors.Add(new ValidationError(
-                "coffeeBrew.coffeeBeanId.required",
-                nameof(CoffeeBeanId),
-                "Coffee Bean id is required."));
+            errors.Add(new ValidationError(ValidationErrorCode.CoffeeBrewCoffeeBeanRequired));
         }
 
-        if (recipeId == Guid.Empty)
+        if (recipeId is null || recipeId.IsEmpty())
         {
-            errors.Add(new ValidationError(
-                "coffeeBrew.recipeId.required",
-                nameof(RecipeId),
-                "Recipe id is required."));
+            errors.Add(new ValidationError(ValidationErrorCode.CoffeeBrewRecipeRequired));
         }
 
         if (!IsValidRating(rating))
@@ -72,9 +68,9 @@ public sealed class CoffeeBrew
         }
 
         return new CoffeeBrew(
-            Guid.NewGuid(),
-            coffeeBeanId,
-            recipeId,
+            new CoffeeBrewId(Guid.NewGuid()),
+            coffeeBeanId!,
+            recipeId!,
             brewedAt,
             rating,
             notes);
@@ -103,10 +99,7 @@ public sealed class CoffeeBrew
 
     private static ValidationError InvalidRating()
     {
-        return new ValidationError(
-            "coffeeBrew.rating.outOfRange",
-            nameof(Rating),
-            "Rating must be between 1 and 5.");
+        return new ValidationError(ValidationErrorCode.CoffeeBrewRatingOutOfRange);
     }
 
     private static string? NormalizeNotes(string? notes)

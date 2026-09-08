@@ -2,9 +2,11 @@
 
 This document captures Brewfolio's current domain shape. It is intentionally small and will evolve through concrete user scenarios rather than speculative fields.
 
+Domain Entity identifiers use distinct StrongOf types. Names with different meanings also remain distinct inside the Domain model, so the compiler cannot exchange values such as a Coffee Bean name and a Roaster name. HTTP and JSON contracts expose their underlying `Guid` and `string` values.
+
 ## Coffee Bean
 
-A `CoffeeBean` represents one coffee product in a Member's current collection.
+A `CoffeeBean` represents a reusable coffee product in a Member's collection. Repeated purchases of that product are represented by separate `CoffeeBag` records.
 
 Initial information:
 
@@ -13,14 +15,32 @@ Initial information:
 - `Roaster`
 - `Origin`
 - `RoastLevel`
-- `Price`, stored as a decimal amount in euros
+- optional product URL
+- optional image
+- optional short description
+
+A Coffee Bean's stock status is derived: it is in stock when at least one of its Coffee Bags is in stock. Its average price is also derived from the total price and initial weight of its Coffee Bags and is displayed as a weighted price per 100 grams.
+
+Creating a Coffee Bean returns `Result<CoffeeBean>`. Valid input produces the Entity; expected invalid input produces a structured error. The result is implemented as a native C# 15 preview union so callers must distinguish expected outcomes explicitly.
+
+## Coffee Bag
+
+A `CoffeeBag` represents one physical package purchased for a Coffee Bean. A Coffee Bean can exist without a current bag and can have several bags from repeated purchases.
+
+Initial information:
+
+- `Id`
+- `CoffeeBeanId`
+- `PurchasedOn`
+- optional `RoastedOn`
+- optional `OpenedOn`
+- `InitialWeightGrams`
+- `PricePaid`, stored as a decimal amount in euros
 - `IsInStock`
 
-`Price` always means euros in the MVP; Brewfolio has no currency field or currency conversion. `IsInStock` is deliberately a Boolean. Brewfolio does not yet track quantities, individual bags, purchases, or stock history.
+`PricePaid` is the price paid for the bag itself and excludes order-wide shipping. Brewfolio does not track a remaining gram quantity and does not reduce stock when a Coffee Brew is recorded. Stock is changed manually.
 
-Creating a Coffee Bean returns `Result<CoffeeBean>`. Valid input produces the Entity; invalid input produces a structured `ValidationFailure` containing all independent validation errors. The result is implemented as a native C# 15 preview union so callers must distinguish the expected outcomes explicitly.
-
-A roast date is not part of `CoffeeBean`. If Brewfolio later needs to distinguish repeated purchases of the same coffee, a separate concept such as `CoffeeBag` or `CoffeeStockItem` can own purchase-specific price, roast date, quantity, and availability.
+Roast age and time since opening can support sensory Freshness Guidance. They must not be used to claim that coffee is safe, unsafe, edible, inedible, or expired. See [the freshness research](research/coffee-freshness.md).
 
 ## Recipe
 
@@ -41,7 +61,7 @@ A Recipe is independent of a Coffee Bean, references one configurable Brewing Me
 
 ## Brewing Method
 
-A `BrewingMethod` represents a preparation method such as V60, AeroPress, or French Press from a shared, centrally managed catalog.
+A `BrewingMethod` represents a shared, configurable preparation method such as V60, AeroPress, or French Press.
 
 Initial information:
 
@@ -69,6 +89,8 @@ Initial information:
 ## Relationships
 
 ```text
+Coffee Bean ──> has many Coffee Bags
+
 Coffee Bean ─────┐
                  ├──> Coffee Brew
 Recipe ──────────┘
@@ -81,4 +103,4 @@ Recipe ──> reused by many Coffee Brews
 
 After authentication and ownership exist, Members will be able to publish Recipes for other Members to prepare. Public Recipe Scores and rankings will be derived from ratings on the resulting Coffee Brews. Publication lifecycle, rating eligibility, weighting, and ranking rules will be designed with that vertical slice rather than added to the current entities in advance.
 
-The first vertical slice creates and lists Coffee Beans. Recipes and Coffee Brews follow after that foundation is persistent and tested.
+The first vertical slice manages Coffee Beans and their Coffee Bags. Recipes and Coffee Brews follow after that foundation is persistent and tested.

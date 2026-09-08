@@ -1,0 +1,149 @@
+<header class="topbar">
+  <a class="brand" routerLink="/coffee-beans"><span>B</span>Brewfolio</a>
+  <a class="back" routerLink="/coffee-beans">← {{ copy().back }}</a>
+  <button type="button" (click)="toggleLanguage()">{{ language() === 'de' ? 'EN' : 'DE' }}</button>
+</header>
+
+<main>
+  <section class="intro">
+    <p class="eyebrow">{{ copy().eyebrow }}</p>
+    <h1>{{ copy().title }}</h1>
+    <p>{{ copy().intro }}</p>
+  </section>
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <label class="wide">
+      <span>{{ copy().name }}</span>
+      <input name="name" formControlName="name" maxlength="120" autocomplete="off" />
+      @if (form.controls.name.touched && form.controls.name.invalid) {
+        <small>{{ copy().required }}</small>
+      }
+    </label>
+
+    <fieldset class="wide bag-fields">
+      <label class="check">
+        <input name="includeFirstBag" type="checkbox" formControlName="includeFirstBag" />
+        <span>{{ copy().firstBag }}</span>
+      </label>
+      @if (form.controls.includeFirstBag.value) {
+        <div class="bag-grid">
+          <label
+            ><span>{{ copy().purchaseDate }}</span
+            ><input name="purchasedOn" type="date" formControlName="purchasedOn" required
+          /></label>
+          <label
+            ><span
+              >{{ copy().roastDate }} <i>{{ copy().optional }}</i></span
+            ><input name="roastedOn" type="date" formControlName="roastedOn"
+          /></label>
+          <label
+            ><span
+              >{{ copy().openedDate }} <i>{{ copy().optional }}</i></span
+            ><input name="openedOn" type="date" formControlName="openedOn"
+          /></label>
+          <label
+            ><span>{{ copy().weight }}</span
+            ><input
+              name="initialWeightGrams"
+              type="number"
+              min="1"
+              step="1"
+              formControlName="initialWeightGrams"
+          /></label>
+          <label
+            ><span>{{ copy().price }}</span
+            ><input name="pricePaid" type="number" min="0" step="0.01" formControlName="pricePaid"
+          /></label>
+          <label class="check"
+            ><input name="isInStock" type="checkbox" formControlName="isInStock" /><span>{{
+              copy().inStock
+            }}</span></label
+          >
+        </div>
+      }
+    </fieldset>
+
+    <label>
+      <span>{{ copy().roaster }}</span>
+      <input name="roaster" formControlName="roaster" maxlength="120" autocomplete="organization" />
+      @if (form.controls.roaster.touched && form.controls.roaster.invalid) {
+        <small>{{ copy().required }}</small>
+      }
+    </label>
+
+    <label>
+      <span
+        >{{ copy().origin }} <i>{{ copy().optional }}</i></span
+      >
+      <input name="origin" formControlName="origin" maxlength="240" autocomplete="off" />
+    </label>
+
+    <label>
+      <span>{{ copy().roastLevel }}</span>
+      <select name="roastLevel" formControlName="roastLevel">
+        @for (level of roastLevels; track level) {
+          <option [value]="level">{{ level }}</option>
+        }
+      </select>
+    </label>
+
+    <label>
+      <span
+        >{{ copy().productUrl }} <i>{{ copy().optional }}</i></span
+      >
+      <input name="productUrl" formControlName="productUrl" maxlength="2048" inputmode="url" />
+      @if (form.controls.productUrl.touched && form.controls.productUrl.invalid) {
+        <small>{{ copy().invalidUrl }}</small>
+      }
+    </label>
+
+    <label class="wide">
+      <span
+        >{{ copy().description }} <i>{{ copy().optional }}</i></span
+      >
+      <textarea
+        name="description"
+        formControlName="description"
+        maxlength="1000"
+        rows="5"
+      ></textarea>
+    </label>
+
+    <div class="wide image-picker">
+      <label for="coffee-bean-image">
+        <span
+          >{{ copy().image }} <i>{{ copy().optional }}</i></span
+        >
+      </label>
+      <input
+        #imageInput
+        id="coffee-bean-image"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        (change)="selectImage($event)"
+      />
+      <small>{{ copy().imageHint }}</small>
+      @if (imageInvalid()) {
+        <small class="validation">{{ copy().imageInvalid }}</small>
+      }
+      @if (imagePreview()) {
+        <div class="image-preview">
+          <img [src]="imagePreview()" alt="" />
+          <button type="button" (click)="clearImage(imageInput)">{{ copy().imageRemove }}</button>
+        </div>
+      } @else if (imageInvalid()) {
+        <button class="image-remove" type="button" (click)="clearImage(imageInput)">
+          {{ copy().imageRemove }}
+        </button>
+      }
+    </div>
+
+    @if (failed()) {
+      <p class="form-error wide" role="alert">{{ copy().error }}</p>
+    }
+
+    <button class="submit wide" type="submit" [disabled]="saving()">
+      {{ saving() ? copy().saving : copy().save }} <span>→</span>
+    </button>
+  </form>
+</main>

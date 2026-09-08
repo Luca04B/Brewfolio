@@ -1,14 +1,6 @@
 namespace Brewfolio.Domain.CoffeeBeans;
 
-public readonly record struct CoffeeBeanId(Guid Value)
-{
-    public static CoffeeBeanId New()
-    {
-        return new CoffeeBeanId(Guid.NewGuid());
-    }
+using StrongOf.SourceGeneration;
 
-    public override string ToString()
-    {
-        return Value.ToString();
-    }
-}
+[Strong<Guid>]
+public partial class CoffeeBeanId;

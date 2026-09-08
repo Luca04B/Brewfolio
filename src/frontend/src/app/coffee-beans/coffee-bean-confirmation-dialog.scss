@@ -1,0 +1,113 @@
+.confirmation-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgb(17 25 21 / 58%);
+  backdrop-filter: blur(8px);
+  animation: backdrop-in 140ms ease-out;
+}
+
+.confirmation-dialog {
+  width: min(30rem, 100%);
+  padding: clamp(1.75rem, 5vw, 3rem);
+  border: 1px solid #d4c8ba;
+  border-radius: 1rem;
+  background: #fbf8f2;
+  box-shadow: 0 2rem 5rem rgb(12 18 15 / 32%);
+  color: #1d211d;
+  animation: dialog-in 160ms ease-out;
+}
+
+.confirmation-dialog .eyebrow {
+  margin-top: 1.4rem;
+}
+
+.confirmation-dialog h2 {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1;
+}
+
+.confirmation-dialog > p:last-of-type {
+  margin: 1rem 0 0;
+  color: #6f685f;
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.confirmation-icon {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #f1d9d0;
+  color: #9d3828;
+  font:
+    700 1rem Georgia,
+    serif;
+}
+
+.confirmation-dialog.warning .confirmation-icon {
+  background: #eee1be;
+  color: #74591a;
+}
+
+.confirmation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #ddd4c8;
+}
+
+.confirmation-actions button {
+  min-height: 2.7rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid #c7beb2;
+  border-radius: 999px;
+  background: transparent;
+  color: #27332d;
+  cursor: pointer;
+  font-size: 0.73rem;
+  font-weight: 750;
+}
+
+.confirmation-actions .confirm {
+  border-color: #a23c2b;
+  background: #a23c2b;
+  color: white;
+}
+
+.confirmation-dialog.warning .confirmation-actions .confirm {
+  border-color: #21382d;
+  background: #21382d;
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    translate: 0 0.75rem;
+    scale: 0.98;
+  }
+}
+
+@media (max-width: 520px) {
+  .confirmation-actions {
+    flex-direction: column-reverse;
+  }
+
+  .confirmation-actions button {
+    width: 100%;
+  }
+}

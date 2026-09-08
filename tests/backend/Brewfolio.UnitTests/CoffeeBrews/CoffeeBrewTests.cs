@@ -1,4 +1,6 @@
+using Brewfolio.Domain.CoffeeBeans;
 using Brewfolio.Domain.CoffeeBrews;
+using Brewfolio.Domain.Recipes;
 using Brewfolio.Domain.Results;
 
 namespace Brewfolio.UnitTests.CoffeeBrews;
@@ -8,8 +10,8 @@ public sealed class CoffeeBrewTests
     [Fact]
     public void CreateLinksCoffeeBeanAndRecipe()
     {
-        var coffeeBeanId = Guid.NewGuid();
-        var recipeId = Guid.NewGuid();
+        var coffeeBeanId = new CoffeeBeanId(Guid.NewGuid());
+        var recipeId = new RecipeId(Guid.NewGuid());
         var brewedAt = DateTimeOffset.UtcNow;
 
         var result = CoffeeBrew.Create(
@@ -32,38 +34,38 @@ public sealed class CoffeeBrewTests
     public void CreateRejectsRatingsOutsideTheOneToFiveRange(int rating)
     {
         var result = CoffeeBrew.Create(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
+            new CoffeeBeanId(Guid.NewGuid()),
+            new RecipeId(Guid.NewGuid()),
             DateTimeOffset.UtcNow,
             rating);
         var error = Assert.Single(GetValidationFailure(result).Errors);
 
-        Assert.Equal("coffeeBrew.rating.outOfRange", error.Code);
+        Assert.Equal(ValidationErrorCode.CoffeeBrewRatingOutOfRange, error.Code);
     }
 
     [Fact]
     public void CreateReturnsAllIndependentValidationErrors()
     {
         Result<CoffeeBrew> result = CoffeeBrew.Create(
-            Guid.Empty,
-            Guid.Empty,
+            new CoffeeBeanId(Guid.Empty),
+            new RecipeId(Guid.Empty),
             DateTimeOffset.UtcNow,
             6);
         var failure = GetValidationFailure(result);
 
         Assert.Collection(
             failure.Errors,
-            error => Assert.Equal("coffeeBrew.coffeeBeanId.required", error.Code),
-            error => Assert.Equal("coffeeBrew.recipeId.required", error.Code),
-            error => Assert.Equal("coffeeBrew.rating.outOfRange", error.Code));
+            error => Assert.Equal(ValidationErrorCode.CoffeeBrewCoffeeBeanRequired, error.Code),
+            error => Assert.Equal(ValidationErrorCode.CoffeeBrewRecipeRequired, error.Code),
+            error => Assert.Equal(ValidationErrorCode.CoffeeBrewRatingOutOfRange, error.Code));
     }
 
     [Fact]
     public void UpdateRatingRejectsAnInvalidRatingWithoutChangingTheBrew()
     {
         var createResult = CoffeeBrew.Create(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
+            new CoffeeBeanId(Guid.NewGuid()),
+            new RecipeId(Guid.NewGuid()),
             DateTimeOffset.UtcNow,
             4);
         var coffeeBrew = GetCreatedCoffeeBrew(createResult);
@@ -72,7 +74,7 @@ public sealed class CoffeeBrewTests
         var failure = GetValidationFailure(updateResult);
         var error = Assert.Single(failure.Errors);
 
-        Assert.Equal("coffeeBrew.rating.outOfRange", error.Code);
+        Assert.Equal(ValidationErrorCode.CoffeeBrewRatingOutOfRange, error.Code);
         Assert.Equal(4, coffeeBrew.Rating);
     }
 
@@ -80,8 +82,8 @@ public sealed class CoffeeBrewTests
     public void UpdateRatingChangesTheRatingAndReturnsSuccess()
     {
         var createResult = CoffeeBrew.Create(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
+            new CoffeeBeanId(Guid.NewGuid()),
+            new RecipeId(Guid.NewGuid()),
             DateTimeOffset.UtcNow,
             4);
         var coffeeBrew = GetCreatedCoffeeBrew(createResult);

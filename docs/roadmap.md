@@ -13,11 +13,15 @@ The roadmap orders learning and delivery so each phase leaves Brewfolio usable. 
 
 ## Phase 1 — Coffee Bean inventory
 
-- create a Coffee Bean with name, roaster, origin, roast level, price, and stock status
+- create a reusable Coffee Bean product with name and roaster
 - list existing Coffee Beans in Angular
 - introduce Entity Framework Core and persist Coffee Beans in SQL Server
 - add the first migration and repeatable local database setup
 - test domain behavior, the application use cases, and persistence
+- add origin, roast profile, product URL, and image as product metadata
+- add Coffee Bags for purchase price, purchase and roast dates, weight, and stock status
+- search, filter, sort, edit, duplicate, and delete the Coffee Bean collection
+- replace and remove private product images with resilient object cleanup
 
 ## Phase 2 — Recipes
 
@@ -68,3 +72,5 @@ The roadmap orders learning and delivery so each phase leaves Brewfolio usable. 
 ## Deferred ideas
 
 Microservices, event-driven communication, managed identity, managed databases, and LLM/MCP integrations are possible learning goals. They become roadmap work only when a concrete user scenario justifies their complexity.
+
+Documenting and hardening access from a phone on the same local network is also deferred. It requires explicit host binding, LAN-aware URLs, firewall rules, and matching CORS/proxy configuration.

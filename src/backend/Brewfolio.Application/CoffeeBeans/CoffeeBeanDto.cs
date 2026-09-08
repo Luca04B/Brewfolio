@@ -3,7 +3,7 @@ using Brewfolio.Domain.CoffeeBeans;
 namespace Brewfolio.Application.CoffeeBeans;
 
 public sealed record CoffeeBeanDto(
-    CoffeeBeanId Id,
+    Guid Id,
     string Name,
     string Roaster,
     string? Origin,
@@ -42,9 +42,9 @@ public sealed record CoffeeBeanDto(
                 MidpointRounding.AwayFromZero);
 
         return new CoffeeBeanDto(
-            coffeeBean.Id,
-            coffeeBean.Name,
-            coffeeBean.Roaster,
+            coffeeBean.Id.Value,
+            coffeeBean.Name.Value,
+            coffeeBean.Roaster.Value,
             coffeeBean.Origin,
             coffeeBean.RoastLevel,
             coffeeBean.Description,

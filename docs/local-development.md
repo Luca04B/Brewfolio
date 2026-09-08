@@ -23,8 +23,15 @@ Restore, build, and run the backend:
 ```bash
 dotnet restore Brewfolio.sln
 dotnet build Brewfolio.sln
+dotnet user-secrets --project src/backend/Brewfolio.Api set \
+  "ConnectionStrings:Brewfolio" \
+  "Server=localhost,1433;Database=Brewfolio;User Id=sa;Password=<your-local-password>;Encrypt=True;TrustServerCertificate=True"
 dotnet run --project src/backend/Brewfolio.Api
 ```
+
+The native API requires a reachable SQL Server. Image uploads additionally require MinIO. Start both dependencies with
+`docker compose up -d sqlserver minio`, then provide the `ObjectStorage__AccessKey` and `ObjectStorage__SecretKey` values from your ignored `.env` file to the API process. In Development, the API applies pending EF Core migrations on
+startup.
 
 Install and run the frontend in a second terminal:
 
@@ -40,7 +47,11 @@ Angular runs at <http://localhost:4200>. Requests to `/api` and `/health` are pr
 ```bash
 dotnet test Brewfolio.sln
 npm test --prefix src/frontend -- --watch=false
+npm run test:e2e --prefix src/frontend
 ```
+
+The backend integration project starts a disposable SQL Server through Testcontainers, so Docker
+must be running for the complete .NET test command.
 
 ## Containers
 
@@ -53,12 +64,14 @@ docker compose up --build
 
 Services:
 
-| Service | Local address |
-| --- | --- |
-| Angular frontend | <http://localhost:4200> |
-| ASP.NET Core API | <http://localhost:8080/api> |
-| Health check | <http://localhost:8080/health> |
-| SQL Server | `localhost,1433` |
+| Service          | Local address                  |
+| ---------------- | ------------------------------ |
+| Angular frontend | <http://localhost:4200>        |
+| ASP.NET Core API | <http://localhost:8080/api>    |
+| Health check     | <http://localhost:8080/health> |
+| SQL Server       | `localhost,1433`               |
+| MinIO S3 API     | <http://localhost:9000>        |
+| MinIO console    | <http://localhost:9001>        |
 
 On ARM-based Macs, the SQL Server container uses the `linux/amd64` platform and therefore runs through Docker's architecture emulation.
 
@@ -69,3 +82,9 @@ Stop the stack with `docker compose down`. Add `--volumes` only when you intenti
 - Keep Docker values in the ignored `.env` file.
 - Use .NET user secrets or environment variables for native backend development.
 - Commit placeholders and configuration keys, never real credentials.
+
+## Browser end-to-end test
+
+Install the Chromium test browser once with `npx --prefix src/frontend playwright install chromium`. With the Docker stack running, `npm run test:e2e --prefix src/frontend` exercises the Coffee Bean create, bag, and collection search flow in desktop and mobile viewports.
+
+Access from a phone on the same LAN is intentionally tracked as a separate follow-up. It needs explicit host binding, firewall and CORS/proxy configuration, and the computer's LAN address instead of `localhost`.

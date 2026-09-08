@@ -6,16 +6,17 @@ The application starts locally. A future cloud deployment is deliberately provid
 
 ## Current status
 
-The repository foundation is ready:
+The repository foundation and a working Coffee Bean inventory vertical slice are available:
 
 - ASP.NET Core API on .NET 11 Preview 7 with C# 15 preview features
 - Angular frontend with TypeScript and SCSS
-- backend unit and architecture test projects
-- local container setup for the API, frontend, and SQL Server
+- backend unit, architecture, and SQL/API integration test projects
+- local container setup for the API, frontend, SQL Server, and private MinIO object storage
 - architecture, roadmap, domain language, and decision records
 - agent guidance for Codex and repository-local skills
+- reusable Coffee Bean products with Coffee Bags, images, search, filters, and lifecycle actions
 
-Business features and database integration will be added as vertical slices. The current API exposes `/api` and `/health` so the setup can be verified immediately.
+The current API exposes `/api`, `/health`, and the Coffee Bean resources below `/api/coffee-beans`.
 
 ## Repository map
 
@@ -40,6 +41,7 @@ Brewfolio/
 └── tests/
     └── backend/
         ├── Brewfolio.ArchitectureTests/
+        ├── Brewfolio.IntegrationTests/
         └── Brewfolio.UnitTests/
 ```
 
@@ -55,6 +57,9 @@ Start the backend:
 
 ```bash
 dotnet restore Brewfolio.sln
+dotnet user-secrets --project src/backend/Brewfolio.Api set \
+  "ConnectionStrings:Brewfolio" \
+  "Server=localhost,1433;Database=Brewfolio;User Id=sa;Password=<your-local-password>;Encrypt=True;TrustServerCertificate=True"
 dotnet run --project src/backend/Brewfolio.Api
 ```
 
@@ -74,11 +79,11 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The containerized frontend is then available at <http://localhost:4200> and proxies `/api` to the API container.
+The containerized frontend is then available at <http://localhost:4200> and proxies `/api` to the API container. MinIO remains private to the backend; its local administration console is available at <http://localhost:9001>.
 
 ## Preview experiment
 
-The backend intentionally targets .NET 11 Preview 7 and enables the C# preview language version. Domain factories use the native C# 15 union-based `Result<T>` to represent either a created Entity or a structured `ValidationFailure`. Mutations that can fail without returning a value use `Result`, whose success case is `Success`. This exercises implicit union conversions and exhaustive pattern matching without a third-party result library.
+The backend intentionally targets .NET 11 Preview 7 and enables the C# preview language version. Domain operations use native C# 15 union-based results to represent successful values, structured validation failures, and categorized application errors. This exercises implicit union conversions and exhaustive pattern matching without a third-party result library.
 
 .NET 11 and native C# unions are prerelease technology and are not supported for production use yet. The exact SDK is pinned in `global.json`; install that SDK before running native backend commands. The container workflow pins the corresponding Preview 7 SDK and runtime images.
 
@@ -95,4 +100,4 @@ The backend intentionally targets .NET 11 Preview 7 and enables the C# preview l
 
 ## Working with coding agents
 
-Repository-aware Codex agents start with [AGENTS.md](AGENTS.md). It points them to the smallest relevant source of truth for each task. Repository-specific skills live under `.agents/skills` without copying architecture or domain knowledge into every skill.
+Repository-aware agents start with [AGENTS.md](AGENTS.md). It points them to the smallest relevant source of truth for each task. Repository-specific skills live under `.agents/skills` without copying architecture or domain knowledge into every skill.

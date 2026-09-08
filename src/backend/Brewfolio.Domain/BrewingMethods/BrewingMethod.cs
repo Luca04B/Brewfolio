@@ -8,47 +8,40 @@ public sealed class BrewingMethod
     {
     }
 
-    private BrewingMethod(Guid id, string name, bool isActive)
+    private BrewingMethod(BrewingMethodId id, BrewingMethodName name, bool isActive)
     {
         Id = id;
         Name = name;
         IsActive = isActive;
     }
 
-    public Guid Id { get; private set; }
+    public BrewingMethodId Id { get; private set; } = null!;
 
-    public string Name { get; private set; } = null!;
+    public BrewingMethodName Name { get; private set; } = null!;
 
     public bool IsActive { get; private set; }
 
-    public static Result<BrewingMethod> Create(string name)
+    public static Result<BrewingMethod> Create(BrewingMethodName name)
     {
-        if (string.IsNullOrWhiteSpace(name))
+        if (name is null || string.IsNullOrWhiteSpace(name.Value))
         {
-            return new ValidationFailure([
-                new ValidationError(
-                    "brewingMethod.name.required",
-                    nameof(Name),
-                    "Name is required.")
-            ]);
+            return InvalidName();
         }
 
-        return new BrewingMethod(Guid.NewGuid(), name.Trim(), true);
+        return new BrewingMethod(
+            new BrewingMethodId(Guid.NewGuid()),
+            new BrewingMethodName(name.Value.Trim()),
+            true);
     }
 
-    public Result Rename(string name)
+    public Result Rename(BrewingMethodName name)
     {
-        if (string.IsNullOrWhiteSpace(name))
+        if (name is null || string.IsNullOrWhiteSpace(name.Value))
         {
-            return new ValidationFailure([
-                new ValidationError(
-                    "brewingMethod.name.required",
-                    nameof(Name),
-                    "Name is required.")
-            ]);
+            return InvalidName();
         }
 
-        Name = name.Trim();
+        Name = new BrewingMethodName(name.Value.Trim());
         return new Success();
     }
 
@@ -61,4 +54,8 @@ public sealed class BrewingMethod
     {
         IsActive = false;
     }
+
+    private static ValidationFailure InvalidName() => new([
+        new ValidationError(ValidationErrorCode.BrewingMethodNameRequired)
+    ]);
 }

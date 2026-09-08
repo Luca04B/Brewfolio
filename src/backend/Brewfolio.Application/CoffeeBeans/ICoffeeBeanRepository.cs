@@ -1,6 +1,5 @@
-using Brewfolio.Domain.CoffeeBeans;
 using Brewfolio.Domain.CoffeeBags;
-using Brewfolio.Domain.Results;
+using Brewfolio.Domain.CoffeeBeans;
 
 namespace Brewfolio.Application.CoffeeBeans;
 
@@ -19,9 +18,9 @@ public interface ICoffeeBeanRepository
     Task DeleteAsync(CoffeeBean coffeeBean, CancellationToken cancellationToken);
 
     Task<CoffeeBean?> FindExactAsync(
-        string name,
-        string roaster,
-        Guid? excludingId,
+        CoffeeBeanName name,
+        RoasterName roaster,
+        CoffeeBeanId? excludingId,
         CancellationToken cancellationToken);
 }
 
@@ -44,7 +43,10 @@ public sealed record StoredCoffeeBeanImage(Stream Content, string ContentType) :
 
 public interface ICoffeeBeanImageStore
 {
-    Task<Result<string>> StoreAsync(Guid coffeeBeanId, byte[] content, CancellationToken cancellationToken);
+    Task<CoffeeBeanResult<string>> StoreAsync(
+        CoffeeBeanId coffeeBeanId,
+        byte[] content,
+        CancellationToken cancellationToken);
 
     Task<StoredCoffeeBeanImage?> OpenAsync(string imageKey, bool thumbnail, CancellationToken cancellationToken);
 

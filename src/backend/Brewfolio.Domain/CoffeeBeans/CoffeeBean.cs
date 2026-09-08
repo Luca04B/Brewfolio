@@ -1,19 +1,20 @@
-using Brewfolio.Domain.Results;
 using Brewfolio.Domain.CoffeeBags;
+using Brewfolio.Domain.Results;
 
 namespace Brewfolio.Domain.CoffeeBeans;
 
 public sealed class CoffeeBean
 {
     private readonly List<CoffeeBag> _coffeeBags = [];
+
     private CoffeeBean()
     {
     }
 
     private CoffeeBean(
         CoffeeBeanId id,
-        string name,
-        string roaster,
+        CoffeeBeanName name,
+        RoasterName roaster,
         string? origin,
         RoastLevel roastLevel,
         string? description,
@@ -30,12 +31,12 @@ public sealed class CoffeeBean
         CreatedAt = createdAt;
         UpdatedAt = createdAt;
     }
- 
-    public CoffeeBeanId Id { get; private set; }
 
-    public string Name { get; private set; } = null!;
+    public CoffeeBeanId Id { get; private set; } = null!;
 
-    public string Roaster { get; private set; } = null!;
+    public CoffeeBeanName Name { get; private set; } = null!;
+
+    public RoasterName Roaster { get; private set; } = null!;
 
     public string? Origin { get; private set; }
 
@@ -54,8 +55,8 @@ public sealed class CoffeeBean
     public IReadOnlyCollection<CoffeeBag> CoffeeBags => _coffeeBags;
 
     public Result<CoffeeBean> UpdateProfile(
-        string name,
-        string roaster,
+        CoffeeBeanName name,
+        RoasterName roaster,
         string? origin,
         RoastLevel roastLevel,
         string? description,
@@ -63,7 +64,7 @@ public sealed class CoffeeBean
         DateTimeOffset updatedAt)
     {
         var replacement = Create(name, roaster, origin, roastLevel, description, productUrl, updatedAt);
-        if (replacement is Error error) return error;
+        if (replacement is ValidationFailure failure) return failure;
         if (replacement is not CoffeeBean valid) throw new InvalidOperationException();
         Name = valid.Name;
         Roaster = valid.Roaster;
@@ -89,77 +90,56 @@ public sealed class CoffeeBean
         return previousImageKey;
     }
 
-    public static Result<CoffeeBean> Create(string name, string roaster, DateTimeOffset createdAt)
+    public static Result<CoffeeBean> Create(
+        CoffeeBeanName name,
+        RoasterName roaster,
+        DateTimeOffset createdAt)
     {
         return Create(name, roaster, null, RoastLevel.Unknown, null, null, createdAt);
     }
 
     public static Result<CoffeeBean> Create(
-        string name,
-        string roaster,
+        CoffeeBeanName name,
+        RoasterName roaster,
         string? origin,
         RoastLevel roastLevel,
         string? description,
         string? productUrl,
         DateTimeOffset createdAt)
     {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return Error.Validation("coffeeBean.name.required", "Name is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(roaster))
-        {
-            return Error.Validation("coffeeBean.roaster.required", "Roaster is required.");
-        }
-
-        var trimmedName = name.Trim();
-        if (trimmedName.Length > 120)
-        {
-            return Error.Validation("coffeeBean.name.tooLong", "Name cannot exceed 120 characters.");
-        }
-
-        var trimmedRoaster = roaster.Trim();
-        if (trimmedRoaster.Length > 120)
-        {
-            return Error.Validation("coffeeBean.roaster.tooLong", "Roaster cannot exceed 120 characters.");
-        }
-
         var trimmedOrigin = NormalizeOptional(origin);
         if (trimmedOrigin?.Length > 240)
         {
-            return Error.Validation("coffeeBean.origin.tooLong", "Origin cannot exceed 240 characters.");
+            return ValidationFailure(
+                ValidationErrorCode.CoffeeBeanOriginTooLong);
         }
 
         var trimmedDescription = NormalizeOptional(description);
         if (trimmedDescription?.Length > 1_000)
         {
-            return Error.Validation(
-                "coffeeBean.description.tooLong",
-                "Description cannot exceed 1,000 characters.");
+            return ValidationFailure(
+                ValidationErrorCode.CoffeeBeanDescriptionTooLong);
         }
 
         var trimmedProductUrl = NormalizeOptional(productUrl);
         if (trimmedProductUrl?.Length > 2_048)
         {
-            return Error.Validation(
-                "coffeeBean.productUrl.tooLong",
-                "Product URL cannot exceed 2,048 characters.");
+            return ValidationFailure(
+                ValidationErrorCode.CoffeeBeanProductUrlTooLong);
         }
 
         if (trimmedProductUrl is not null
             && (!Uri.TryCreate(trimmedProductUrl, UriKind.Absolute, out var parsedUrl)
                 || (parsedUrl.Scheme != Uri.UriSchemeHttp && parsedUrl.Scheme != Uri.UriSchemeHttps)))
         {
-            return Error.Validation(
-                "coffeeBean.productUrl.invalid",
-                "Product URL must be a complete HTTP or HTTPS URL.");
+            return ValidationFailure(
+                ValidationErrorCode.CoffeeBeanProductUrlInvalid);
         }
 
         return new CoffeeBean(
-            Guid.NewGuid(),
-            trimmedName,
-            trimmedRoaster,
+            new CoffeeBeanId(Guid.NewGuid()),
+            name,
+            roaster,
             trimmedOrigin,
             roastLevel,
             trimmedDescription,
@@ -200,8 +180,8 @@ public sealed class CoffeeBean
         return result;
     }
 
-    public Result<CoffeeBag> ReplaceBag(
-        Guid coffeeBagId,
+    public CoffeeBagMutationResult ReplaceBag(
+        CoffeeBagId coffeeBagId,
         DateOnly purchasedOn,
         DateOnly? roastedOn,
         DateOnly? openedOn,
@@ -213,7 +193,7 @@ public sealed class CoffeeBean
     {
         var coffeeBag = _coffeeBags.SingleOrDefault(bag => bag.Id == coffeeBagId);
         return coffeeBag is null
-            ? Error.NotFound("coffeeBag.notFound", "Coffee Bag was not found.")
+            ? new CoffeeBagNotFound()
             : coffeeBag.Replace(
                 purchasedOn,
                 roastedOn,
@@ -225,37 +205,40 @@ public sealed class CoffeeBean
                 updatedAt);
     }
 
-    public Result<CoffeeBag> MarkBagOpened(
-        Guid coffeeBagId,
+    public CoffeeBagMutationResult MarkBagOpened(
+        CoffeeBagId coffeeBagId,
         DateOnly openedOn,
         DateTimeOffset updatedAt)
     {
         var coffeeBag = _coffeeBags.SingleOrDefault(bag => bag.Id == coffeeBagId);
         return coffeeBag is null
-            ? Error.NotFound("coffeeBag.notFound", "Coffee Bag was not found.")
+            ? new CoffeeBagNotFound()
             : coffeeBag.MarkOpened(openedOn, openedOn, updatedAt);
     }
 
-    public Result<CoffeeBag> SetBagStock(
-        Guid coffeeBagId,
+    public CoffeeBagMutationResult SetBagStock(
+        CoffeeBagId coffeeBagId,
         bool isInStock,
         DateTimeOffset updatedAt)
     {
         var coffeeBag = _coffeeBags.SingleOrDefault(bag => bag.Id == coffeeBagId);
         return coffeeBag is null
-            ? Error.NotFound("coffeeBag.notFound", "Coffee Bag was not found.")
+            ? new CoffeeBagNotFound()
             : coffeeBag.SetStock(isInStock, updatedAt);
     }
 
-    public Result<CoffeeBag> RemoveBag(Guid coffeeBagId)
+    public CoffeeBagMutationResult RemoveBag(CoffeeBagId coffeeBagId)
     {
         var coffeeBag = _coffeeBags.SingleOrDefault(bag => bag.Id == coffeeBagId);
         if (coffeeBag is null)
         {
-            return Error.NotFound("coffeeBag.notFound", "Coffee Bag was not found.");
+            return new CoffeeBagNotFound();
         }
 
         _coffeeBags.Remove(coffeeBag);
         return coffeeBag;
     }
+
+    private static ValidationFailure ValidationFailure(ValidationErrorCode code) =>
+        new([new ValidationError(code)]);
 }

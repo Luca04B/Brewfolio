@@ -1,5 +1,5 @@
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   font-family:
     Inter,
     ui-sans-serif,
@@ -8,8 +8,8 @@
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
-  background: #17110e;
-  color: #f8eee4;
+  background: #f2eee5;
+  color: #1c211d;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -21,10 +21,26 @@
 html {
   min-width: 20rem;
   min-height: 100%;
-  background: radial-gradient(circle at 85% 10%, rgb(187 112 82 / 14%), transparent 30rem), #17110e;
+  background: #f2eee5;
 }
 
 body {
   min-height: 100vh;
   margin: 0;
+}
+
+:focus-visible {
+  outline: 3px solid #d96643;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

@@ -12,6 +12,8 @@ Organize each user capability end to end. `CreateCoffeeBean`, `ListCoffeeBeans`,
 
 Use a Domain Entity when identity and lifecycle matter, such as `CoffeeBean`, `Recipe`, and `CoffeeBrew`. Introduce a Value Object when a value develops reusable rules or multiple parts that primitives cannot express clearly. The MVP keeps price as a decimal amount in euros.
 
+Use StrongOf-based types for Domain Entity identifiers and for distinct names that could otherwise be accidentally exchanged, such as a Coffee Bean name and Roaster name. Keep transport contracts primitive and translate at the Application seam. Descriptions, notes, external URLs, timestamps, and other values without an earned invariant or ambiguity remain primitive.
+
 ### Factory Method
 
 Create an Entity through a named factory when construction must enforce invariants or return an expected validation failure. Keep a normal constructor when it expresses the rules just as clearly.
@@ -26,9 +28,9 @@ Return a Result for expected business failures such as invalid input, duplicates
 
 The Domain uses the native C# 15 preview declarations `Result<T>(T, ValidationFailure)` and `Result(Success, ValidationFailure)`. Factories use the generic form to return a new Entity. A failable mutation uses the non-generic form when success has no additional payload. Infallible state changes remain `void`.
 
-`ValidationFailure` contains at least one `ValidationError`. Each error has a stable machine-readable code, a Domain property name, and a client-safe description. Collect independent errors and return them together. An empty failure or the invalid default state of a generated union is a programming error, not an expected outcome.
+`ValidationFailure` contains at least one `ValidationError`. Its code and field are closed Domain enums; its client-safe description is text. Collect independent errors and return them together. An empty failure or the invalid default state of a generated union is a programming error, not an expected outcome.
 
-Keep `NotFound`, `Conflict`, and other orchestration outcomes out of the shared Domain result. Define a concrete native union for an Application use case when it has distinct expected outcomes. The API maps those outcomes to HTTP and translates Domain property names to request-contract field names.
+Keep `NotFound`, `Conflict`, and other orchestration outcomes out of the shared Domain result. Define a feature-local native union and feature-local error-code enum in Application when a use case has distinct expected outcomes. The API maps Domain and Application enums centrally to stable HTTP error-code and request-field strings. Descriptions may cross that seam for display, but callers must branch only on typed codes or HTTP status—not on description text.
 
 ### Repository Adapter
 

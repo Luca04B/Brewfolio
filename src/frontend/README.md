@@ -11,10 +11,13 @@ npm install --prefix src/frontend
 npm start --prefix src/frontend
 npm run build --prefix src/frontend
 npm test --prefix src/frontend -- --watch=false
+npm run test:e2e --prefix src/frontend
 npm run format:check --prefix src/frontend
 ```
 
 The development server runs at <http://localhost:4200>. `proxy.conf.json` forwards `/api` and `/health` to the ASP.NET Core API at <http://localhost:5199>, so application code can use relative URLs.
+
+The Playwright happy path expects the complete Docker stack at <http://localhost:4200>. Install its Chromium browser once with `npx --prefix src/frontend playwright install chromium`.
 
 ## Structure
 
