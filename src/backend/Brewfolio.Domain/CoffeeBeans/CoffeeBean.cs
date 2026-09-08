@@ -1,117 +1,261 @@
 using Brewfolio.Domain.Results;
+using Brewfolio.Domain.CoffeeBags;
 
 namespace Brewfolio.Domain.CoffeeBeans;
 
 public sealed class CoffeeBean
 {
+    private readonly List<CoffeeBag> _coffeeBags = [];
     private CoffeeBean()
     {
     }
 
     private CoffeeBean(
-        Guid id,
+        CoffeeBeanId id,
         string name,
         string roaster,
-        string origin,
+        string? origin,
         RoastLevel roastLevel,
-        decimal price,
-        bool isInStock)
+        string? description,
+        string? productUrl,
+        DateTimeOffset createdAt)
     {
         Id = id;
         Name = name;
         Roaster = roaster;
         Origin = origin;
         RoastLevel = roastLevel;
-        Price = price;
-        IsInStock = isInStock;
+        Description = description;
+        ProductUrl = productUrl;
+        CreatedAt = createdAt;
+        UpdatedAt = createdAt;
     }
-
-    public Guid Id { get; private set; }
+ 
+    public CoffeeBeanId Id { get; private set; }
 
     public string Name { get; private set; } = null!;
 
     public string Roaster { get; private set; } = null!;
 
-    public string Origin { get; private set; } = null!;
+    public string? Origin { get; private set; }
 
     public RoastLevel RoastLevel { get; private set; }
 
-    public decimal Price { get; private set; }
+    public string? Description { get; private set; }
 
-    public bool IsInStock { get; private set; }
+    public string? ProductUrl { get; private set; }
+
+    public string? ImageKey { get; private set; }
+
+    public DateTimeOffset CreatedAt { get; private set; }
+
+    public DateTimeOffset UpdatedAt { get; private set; }
+
+    public IReadOnlyCollection<CoffeeBag> CoffeeBags => _coffeeBags;
+
+    public Result<CoffeeBean> UpdateProfile(
+        string name,
+        string roaster,
+        string? origin,
+        RoastLevel roastLevel,
+        string? description,
+        string? productUrl,
+        DateTimeOffset updatedAt)
+    {
+        var replacement = Create(name, roaster, origin, roastLevel, description, productUrl, updatedAt);
+        if (replacement is Error error) return error;
+        if (replacement is not CoffeeBean valid) throw new InvalidOperationException();
+        Name = valid.Name;
+        Roaster = valid.Roaster;
+        Origin = valid.Origin;
+        RoastLevel = valid.RoastLevel;
+        Description = valid.Description;
+        ProductUrl = valid.ProductUrl;
+        UpdatedAt = updatedAt.ToUniversalTime();
+        return this;
+    }
+
+    public void SetImage(string imageKey, DateTimeOffset updatedAt)
+    {
+        ImageKey = imageKey;
+        UpdatedAt = updatedAt.ToUniversalTime();
+    }
+
+    public string? RemoveImage(DateTimeOffset updatedAt)
+    {
+        var previousImageKey = ImageKey;
+        ImageKey = null;
+        UpdatedAt = updatedAt.ToUniversalTime();
+        return previousImageKey;
+    }
+
+    public static Result<CoffeeBean> Create(string name, string roaster, DateTimeOffset createdAt)
+    {
+        return Create(name, roaster, null, RoastLevel.Unknown, null, null, createdAt);
+    }
 
     public static Result<CoffeeBean> Create(
         string name,
         string roaster,
-        string origin,
+        string? origin,
         RoastLevel roastLevel,
-        decimal price,
-        bool isInStock = true)
+        string? description,
+        string? productUrl,
+        DateTimeOffset createdAt)
     {
-        List<ValidationError> errors = [];
-
         if (string.IsNullOrWhiteSpace(name))
         {
-            errors.Add(new ValidationError(
-                "coffeeBean.name.required",
-                nameof(Name),
-                "Name is required."));
+            return Error.Validation("coffeeBean.name.required", "Name is required.");
         }
 
         if (string.IsNullOrWhiteSpace(roaster))
         {
-            errors.Add(new ValidationError(
-                "coffeeBean.roaster.required",
-                nameof(Roaster),
-                "Roaster is required."));
+            return Error.Validation("coffeeBean.roaster.required", "Roaster is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(origin))
+        var trimmedName = name.Trim();
+        if (trimmedName.Length > 120)
         {
-            errors.Add(new ValidationError(
-                "coffeeBean.origin.required",
-                nameof(Origin),
-                "Origin is required."));
+            return Error.Validation("coffeeBean.name.tooLong", "Name cannot exceed 120 characters.");
         }
 
-        if (!Enum.IsDefined(roastLevel))
+        var trimmedRoaster = roaster.Trim();
+        if (trimmedRoaster.Length > 120)
         {
-            errors.Add(new ValidationError(
-                "coffeeBean.roastLevel.invalid",
-                nameof(RoastLevel),
-                "Roast level is invalid."));
+            return Error.Validation("coffeeBean.roaster.tooLong", "Roaster cannot exceed 120 characters.");
         }
 
-        if (price < 0)
+        var trimmedOrigin = NormalizeOptional(origin);
+        if (trimmedOrigin?.Length > 240)
         {
-            errors.Add(new ValidationError(
-                "coffeeBean.price.negative",
-                nameof(Price),
-                "Price cannot be negative."));
+            return Error.Validation("coffeeBean.origin.tooLong", "Origin cannot exceed 240 characters.");
         }
 
-        if (errors.Count > 0)
+        var trimmedDescription = NormalizeOptional(description);
+        if (trimmedDescription?.Length > 1_000)
         {
-            return new ValidationFailure(errors);
+            return Error.Validation(
+                "coffeeBean.description.tooLong",
+                "Description cannot exceed 1,000 characters.");
+        }
+
+        var trimmedProductUrl = NormalizeOptional(productUrl);
+        if (trimmedProductUrl?.Length > 2_048)
+        {
+            return Error.Validation(
+                "coffeeBean.productUrl.tooLong",
+                "Product URL cannot exceed 2,048 characters.");
+        }
+
+        if (trimmedProductUrl is not null
+            && (!Uri.TryCreate(trimmedProductUrl, UriKind.Absolute, out var parsedUrl)
+                || (parsedUrl.Scheme != Uri.UriSchemeHttp && parsedUrl.Scheme != Uri.UriSchemeHttps)))
+        {
+            return Error.Validation(
+                "coffeeBean.productUrl.invalid",
+                "Product URL must be a complete HTTP or HTTPS URL.");
         }
 
         return new CoffeeBean(
             Guid.NewGuid(),
-            name.Trim(),
-            roaster.Trim(),
-            origin.Trim(),
+            trimmedName,
+            trimmedRoaster,
+            trimmedOrigin,
             roastLevel,
-            price,
-            isInStock);
+            trimmedDescription,
+            trimmedProductUrl,
+            createdAt.ToUniversalTime());
     }
 
-    public void MarkAsInStock()
+    private static string? NormalizeOptional(string? value)
     {
-        IsInStock = true;
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
-    public void MarkAsOutOfStock()
+    public Result<CoffeeBag> AddBag(
+        DateOnly purchasedOn,
+        DateOnly? roastedOn,
+        DateOnly? openedOn,
+        int initialWeightGrams,
+        decimal pricePaid,
+        bool isInStock,
+        DateOnly today,
+        DateTimeOffset createdAt)
     {
-        IsInStock = false;
+        var result = CoffeeBag.Create(
+            Id,
+            purchasedOn,
+            roastedOn,
+            openedOn,
+            initialWeightGrams,
+            pricePaid,
+            isInStock,
+            today,
+            createdAt);
+        if (result is CoffeeBag coffeeBag)
+        {
+            _coffeeBags.Add(coffeeBag);
+        }
+
+        return result;
+    }
+
+    public Result<CoffeeBag> ReplaceBag(
+        Guid coffeeBagId,
+        DateOnly purchasedOn,
+        DateOnly? roastedOn,
+        DateOnly? openedOn,
+        int initialWeightGrams,
+        decimal pricePaid,
+        bool isInStock,
+        DateOnly today,
+        DateTimeOffset updatedAt)
+    {
+        var coffeeBag = _coffeeBags.SingleOrDefault(bag => bag.Id == coffeeBagId);
+        return coffeeBag is null
+            ? Error.NotFound("coffeeBag.notFound", "Coffee Bag was not found.")
+            : coffeeBag.Replace(
+                purchasedOn,
+                roastedOn,
+                openedOn,
+                initialWeightGrams,
+                pricePaid,
+                isInStock,
+                today,
+                updatedAt);
+    }
+
+    public Result<CoffeeBag> MarkBagOpened(
+        Guid coffeeBagId,
+        DateOnly openedOn,
+        DateTimeOffset updatedAt)
+    {
+        var coffeeBag = _coffeeBags.SingleOrDefault(bag => bag.Id == coffeeBagId);
+        return coffeeBag is null
+            ? Error.NotFound("coffeeBag.notFound", "Coffee Bag was not found.")
+            : coffeeBag.MarkOpened(openedOn, openedOn, updatedAt);
+    }
+
+    public Result<CoffeeBag> SetBagStock(
+        Guid coffeeBagId,
+        bool isInStock,
+        DateTimeOffset updatedAt)
+    {
+        var coffeeBag = _coffeeBags.SingleOrDefault(bag => bag.Id == coffeeBagId);
+        return coffeeBag is null
+            ? Error.NotFound("coffeeBag.notFound", "Coffee Bag was not found.")
+            : coffeeBag.SetStock(isInStock, updatedAt);
+    }
+
+    public Result<CoffeeBag> RemoveBag(Guid coffeeBagId)
+    {
+        var coffeeBag = _coffeeBags.SingleOrDefault(bag => bag.Id == coffeeBagId);
+        if (coffeeBag is null)
+        {
+            return Error.NotFound("coffeeBag.notFound", "Coffee Bag was not found.");
+        }
+
+        _coffeeBags.Remove(coffeeBag);
+        return coffeeBag;
     }
 }
