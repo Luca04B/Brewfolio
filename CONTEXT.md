@@ -1,6 +1,6 @@
 # Brewfolio
 
-Brewfolio is the product and repository being built as a learning-focused portfolio application. This glossary will grow only when business terms are agreed during feature design.
+Brewfolio is the product and repository being built as a learning-focused application. This glossary will grow only when business terms are agreed during feature design.
 
 ## Language
 
